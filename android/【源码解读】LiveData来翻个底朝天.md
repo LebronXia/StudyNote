@@ -367,6 +367,8 @@ private void considerNotify(ObserverWrapper observer) {
 
 具体的解决办法还是看大神的推荐篇[LiveData 数据倒灌：别问，问就是不可预期](https://zhuanlan.zhihu.com/p/161073021) 及参考 [《UnPeek-LiveData》](https://link.zhihu.com/?target=https%3A//github.com/KunMinX/UnPeek-LiveData) 源码。
 
+最近找到一个方法：[**使用事件包装器**](https://juejin.cn/post/6844903623252508685#heading-7)来解决到倒灌
+
 再来总结下有几种情况LiveData会分发值:
 
 1. 调用 setValue 和 postValue 并且 LifecycleOwner 处于活跃状态时
@@ -392,6 +394,8 @@ private void considerNotify(ObserverWrapper observer) {
 [一文带你了解LiveData(原理篇）](https://juejin.cn/post/6844903982691794952)
 
 [**重学安卓：LiveData 数据倒灌 背景缘由全貌 独家解析**](https://xiaozhuanlan.com/topic/6719328450)
+
+[[译] 在 SnackBar，Navigation 和其他事件中使用 LiveData（SingleLiveEvent 案例）](https://juejin.cn/post/6844903623252508685#heading-7)
 
 
 
