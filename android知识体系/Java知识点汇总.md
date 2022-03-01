@@ -5,6 +5,7 @@
 - volatile 的作用和原理
 - 说两个线程同步的集合类
 - 构造一个出现死锁的情况
+- 线程安全的集合和类型
 - ThreadLocal
 
 Java 内存模型规定了所有的变量都存储在主内存中，每条线程有自己的工作内存。
@@ -31,17 +32,31 @@ volatitle保证可见性，禁止指令重排序，只有一个线程执行写�
 
 以ThreadLocal对象的**弱引用**作为key，ThreadLocal里“存放”的数据作为value，放在该Map中。
 
+每个线程内部有一个名为threadLocals的成员变量，该变量的类型为ThreadLocal.ThreadLocalMap类型（类似于一个HashMap），其中的key为当前定义的ThreadLocal变量的this引用，value为我们使用set方法设置的值。每个线程的本地变量存放在自己的本地内存变量threadLocals中，如果当前线程一直不消亡，那么这些本地变量就会一直存在（所以可能会导致内存溢出），因此使用完毕需要将其remove掉。
 
+ThreadLocalMap内部实际上是一个Entry数组，THreadLocalMap中的Entry的key使用的是ThreadLocal对象的弱引用，在没有其他地方对ThreadLoca依赖，ThreadLocalMap中的ThreadLocal对象就会被回收掉，但是对应的不会被回收，这个时候Map中就可能存在key为null但是value不为null的项，这需要实际的时候使用完毕及时调用remove方法避免内存泄漏。
 
 **乐观锁**
 
 CAS 其实是一种乐观锁，一般有三个值，分别为：赋值对象，原值，新值，在执行的时候，会先判断内存中的值是否和原值相等，相等的话把新值赋值给对象，否则赋值失败，整个过程都是原子性操作，没有线程安全问题。
+
+AtomicInteger内部采用CAS原理
+
+**线程安全的集合和类型**
+
+CopyOnWriteArrayList
+
+ConcurrentHashMap 
+
+LinkBlockingQueue
 
 [面试官：说说多线程并发问题](https://juejin.cn/post/6844903941830869006)
 
 [面试必备：Kotlin 线程同步的 N 种方法](https://juejin.cn/post/6981952428786597902)
 
 [不可不说的Java“锁”事](https://tech.meituan.com/2018/11/15/java-lock.html)
+
+[[Java中的ThreadLocal详解](https://www.cnblogs.com/fsmly/p/11020641.html)
 
 # Jvm管理
 
@@ -224,6 +239,10 @@ IO密集型：核心线程数 = CPU核数 * 2
 
 其中系统类加载器包括3种，分别是Bootstrap ClassLoader、 Extensions ClassLoader和 App ClassLoader。
 
+类加载机制，加载过程 ？
+
+加载，验证，准备，解析，初始化，使用和卸载。其中验证，准备，解析3个部分统称为连接。
+
 ## 双亲委托模式
 
 所谓双亲委托模式就是首先判断该Class是否已经加载，如果没有则不是自身去查找而是委托给父加载器进行查找，这样依次的进行递归，直到委托到最顶层的Bootstrap ClassLoader，如果Bootstrap ClassLoader找到了该Class，就会直接返回，如果没找到，则继续依次向下查找，如果还没找到则最后会交由自身去查找。
@@ -237,6 +256,8 @@ IO密集型：核心线程数 = CPU核数 * 2
 [Android解析ClassLoader（一）Java中的ClassLoader](http://liuwangshu.cn/application/classloader/1-java-classloader-.html)
 
 [深入探讨 Java 类加载器](https://blog.csdn.net/gongxiao1993/article/details/81351988)
+
+[类加载机制](https://lrh1993.gitbooks.io/android_interview_guide/content/java/virtual-machine/classloader.html)
 
 # Kotlin
 

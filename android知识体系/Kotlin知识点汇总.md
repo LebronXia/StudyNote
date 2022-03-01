@@ -38,8 +38,6 @@ private class SynchronizedLazyImpl<out T>(initializer: () -> T, lock: Any? = nul
 
 
 
-
-
 [by lazy是如何实现延迟加载的](https://www.jianshu.com/p/68962ad7986f)
 
 [委托模式（Delegate）和委托属性（Delegate Properties）](https://www.jianshu.com/p/f54ff17425b2)

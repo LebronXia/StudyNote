@@ -41,7 +41,7 @@ Activity 是四大组件之一，也是我们的界面载体，可以展示页�
 
 
 
-将我们调用 View.post 方法传入的 Runnable 发送到主线程的消息队列，消息是同步类型。Handler 的消息队列循环过程中，在一个消息执行完之后才会取下一个消息。因为这一特性，所以在异步消息没执行完之前，消息队列中的消息是不会执行的。所以调用了 HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们不会被立即执行，等 performTraversals 方法执行完，也就是异步消息结束之后， HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们才会被执行。ViewRoomImpl 的 performTraversals 方法注释 1 处，开始了 View 绘制流程，依次是测量 performMeasure、布局 performLayout 和绘制 performDraw，这三个方法走完，标志着我们的 UI 已经完成显示了。
+将我们调用 View.post 方法传入的 Runnable 发送到主线程的消息队列，消息是同步类型，也就是放在HandleActionQueue中。Handler 的消息队列循环过程中，在一个消息执行完之后才会取下一个消息。因为这一特性，所以在异步消息没执行完之前，消息队列中的消息是不会执行的。所以调用了 HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们不会被立即执行，等 performTraversals 方法执行完，也就是异步消息结束之后， HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们才会被执行。ViewRoomImpl 的 performTraversals 方法注释 1 处，开始了 View 绘制流程，依次是测量 performMeasure、布局 performLayout 和绘制 performDraw，这三个方法走完，标志着我们的 UI 已经完成显示了。
 
 [简析Window、Activity、DecorView以及ViewRoot之间的错综关系](https://www.jianshu.com/p/8766babc40e0)
 
@@ -158,6 +158,8 @@ IdleHandler是主线程在开始加载页面完成后调用的方法，可以提
 
 [**Android 中的进程通信方式**](https://links.jianshu.com/go?to=https%3A%2F%2Fblog.csdn.net%2Fu011240877%2Farticle%2Fdetails%2F72863432)：AIDL(基于 Binder)、Messenger (基于 Binder)、Socket、Binder (基于 mmp 共享内存)、文件
 
+[面试官：说说多线程并发问题](https://juejin.cn/post/6844903941830869006)
+
 # UI适配方案
 
 - 对于 UI 稿的 px 是如何适配的
@@ -187,9 +189,20 @@ ARGB_4444：表示16位位图，每像素占2byte内存（poor quality - Android
 
 ARGB_8888：表示32位ARGB位图，每像素占4byte内存（Recommended）
 
-
-
 利用的就是inBitmap指定将要重复利用的Bitmap对象的内存。同时需要指定inMutable=true表示对象是可变的。如果inPreferredConfig = android.graphics.Bitmap.Config.HARDWARE，inMutable属性永远为false。
+
+ **图片储存优化**
+
+1.尺寸优化：通过减小宽高来实现
+2.质量压缩：改变一个像素占用的内存（优化解码率）
+3.内存重用：需要用到inBitmap属性
+
+**图片加载优化**
+
+1.异步优化：图片放在后台请求（不占用主UI的资源）
+2.图片缓存：对于列表中的图片进行缓存（本地文件中的缓存）
+3.网络请求：使用OkHttp进行图片请求（优点很多）
+4.懒加载：当图片呈现到可视区域再进行加载**
 
 **Android图片压缩**
 
@@ -219,10 +232,11 @@ ARGB_8888：表示32位ARGB位图，每像素占4byte内存（Recommended）
 
 [Android 图片压缩最常用的几种方法!](https://www.jianshu.com/p/1f69238b8874)
 
-
 [Android性能优化系列之Bitmap图片优化](https://blog.csdn.net/u012124438/article/details/66087785)
 
 [Bitmap的inBitmap使用](https://my.oschina.net/u/3863980/blog/3019921)
+
+[Bitmap优化](https://blog.csdn.net/anhenzhufeng/article/details/106838441)
 
 # WebView 与 JS 交互方式
 
@@ -344,10 +358,6 @@ Android事件分发是先传递到ViewGroup，再由ViewGroup传递到View的。
 
 3. layout()：对控件进行重新定位执行onLayout()这个方法，比如要做一个可回弹的ScrollView，思路就是随着手势的滑动子控件滑动，那么我们可以将ScrollView的子控件调用layout（l,t,r,b）这个方法就行了。
 
-刷新原理：View 的 requestLayout 和 ViewRootImpl##setView 最终都会调用 ViewRootImpl 的 requestLayout 方法。然后通过 scheduleTraversals 方法提交绘制任务，然后再通过DisplayEventReceiver向底层请求vsync垂直同步信号，当vsync信号来的时候，通过JNI回调回来，再通过Handler往消息队列post一个异步任务，最终是ViewRootImpl去执行绘制任务，最后调用performTraversals方法，完成绘制。
-
-最终**performTraversals()**方法触发了View的绘制。该方法内部，依次调用了performMeasure(),performLayout(),performDraw(),将View的measure，layout，draw过程，从顶层View分发了下去。
-
 可以看到一般情况下View的draw流程分为四步：
 
 1. 绘制背景
@@ -377,7 +387,7 @@ Android事件分发是先传递到ViewGroup，再由ViewGroup传递到View的。
 
 6. 最后分析了软件绘制的原理，通过relayoutWindow 方法将Surface跟当前Window绑定，通过Surface的lockCanvas方法获取Surface的的Canvas，然后View的绘制就通过这个Canvas，最后通过Surface的unlockCanvasAndPost 方法提交绘制的数据，最终将绘制的数据交给SurfaceFlinger去提交给屏幕显示。。
 
-[[Android View绘制13问13答](https://www.cnblogs.com/punkisnotdead/p/5181821.html)](https://www.cnblogs.com/punkisnotdead/p/5181821.html)
+[Android View绘制13问13答](https://www.cnblogs.com/punkisnotdead/p/5181821.html)
 
 [面试官问你：自定义View跟绘制流程懂吗？帮你搞定面试官](https://blog.csdn.net/c10wtiybq1ye3/article/details/103415297)
 
@@ -442,11 +452,11 @@ RecyclerView.ViewHolder viewHolder = mRecyclerView.findViewHolderForAdapterPosit
             }
 ```
 
-
-
 [让你彻底长我RecyclerView的缓存机制](http://www.360doc.com/content/19/0712/11/36367108_848240455.shtml)
 
-[阿里3轮面试都问了RecyclerView](https://www.jianshu.com/p/eabb00c500ef)
+[阿里3轮面试都问了RecyclerView](https://blog.csdn.net/weixin_44339238/article/details/108654771)
+
+[再也不用担心面试问RecyclerView了](https://www.jianshu.com/p/443d741c7e3e)
 
 # Gradle
 
@@ -588,15 +598,27 @@ Traceview - 系统性能分析工具，用于定位应用代码中的耗时操�
 
 [面试官又来了：你的app卡顿过吗？](https://juejin.cn/post/6844903949560971277)
 
+刷新原理：View 的 requestLayout 和 ViewRootImpl##setView 最终都会调用 ViewRootImpl 的 requestLayout 方法。然后通过 scheduleTraversals 方法提交绘制任务，然后再通过DisplayEventReceiver向底层请求vsync垂直同步信号，当vsync信号来的时候，通过JNI回调回来，再通过Handler往消息队列post一个异步任务，最终是ViewRootImpl去执行绘制任务，最后调用performTraversals方法，完成绘制。
+
+最终**performTraversals()**方法触发了View的绘制。该方法内部，依次调用了performMeasure(),performLayout(),performDraw(),将View的measure，layout，draw过程，从顶层View分发了下去。
+
+同步屏障是在**scheduleTraversals**方法里加进去的，在异步消息执行后，在**doTraversal()** 里{主动移除同步屏障
+
+有两个地方会造成掉帧，一个是主线程有其它耗时操作，导致doFrame没有机会在vsync信号发出之后16毫秒内调用；还有一个就是当前doFrame方法耗时，绘制太久，下一个vsync信号来的时候这一帧还没画完，造成掉帧
+
 **应用卡顿，原因一般都可以认为是Handler处理消息太耗时导致的**，细分的原因可能是方法本身太耗时、算法效率低、cpu被抢占、内存不足、IPC超时等等。
 
 被问到如何监控App卡顿，统计方法耗时，我们可以从源码开始切入，
 
 ## 卡顿监控
 
+[BlockCanary](https://link.juejin.cn/?target=https%3A%2F%2Fgithub.com%2Fmarkzhai%2FAndroidPerformanceMonitor)   ，Looper两次处理消息的时间差，比如大于3秒，就认为卡顿
+
 **Looper.printer** 
 
 **字节码插桩**
+
+通过Gradle Plugin+ASM，编译期在每个方法开始和结束位置分别插入一行代码，统计方法耗时
 
  真实操作中可以采用插桩的方式，给对应范围的方法起止位加入日志，并计算方法的执行耗时，后续统计出耗时排行，然后针对方法再进行优化。UI方面也可以采用一些工具来发现过度绘制，以及绘制耗时，然后再根据统计情况来优化UI绘制卡顿。 优化的方式也比较多，比如IO集中，加入缓存，降低联网频次，合并网络请求，自定义UI尽可能扁平。控制锁的使用，防止锁循环，过度锁争夺，死锁，必要的情况下可以采用CAS模式。
 
@@ -629,11 +651,11 @@ DexClassLoader：可以加载任意目录下的dex/jar/apk/zip文件，比PathCl
 
 了解下Android 的异常处理机制，在我们未设置Thread.UncaughtExceptionHandler之前，系统会默认设置一个。ZygoteInit.zygoteInit()，调用了` Process.killProcess(Process.myPid()); System.exit(10);`,触发了进程结束逻辑，也就导致了程序停止运行。
 
-通过在主线程里面发送一个消息，捕获主线程的异常，并在异常发生后继续调用`Looper.loop`方法，使得主线程继续处理消息。
+1. 通过在主线程里面发送一个消息，捕获主线程的异常，并在异常发生后继续调用`Looper.loop`方法，使得主线程继续处理消息。
 
 对于子线程的异常，可以通过`Thread.setDefaultUncaughtExceptionHandler`来拦截，并且子线程的停止不会给用户带来感知。
 
-对于在生命周期内发生的异常，可以通过替换`ActivityThread.mH.mCallback`的方法来捕获，并且通过`token`来结束Activity或者直接杀死进程。但是这种办法要适配不同SDK版本的源码才行，所以慎用，需要的可以看文末Cockroach库源码。
+3. 对于在生命周期内发生的异常，可以通过替换`ActivityThread.mH.mCallback`的方法来捕获，并且通过`token`来结束Activity或者直接杀死进程。但是这种办法要适配不同SDK版本的源码才行，所以慎用，需要的可以看文末Cockroach库源码。
 
 Native Crash捕获
 
@@ -699,6 +721,18 @@ Native Crash捕获
 
 Binder里有很多线程在跑。fork会把进程里面当前线程复制过去，当线程里某个资源被其他资源锁住时，当fork后线程信息丢失了（fork原理），最后没有开锁的钥匙了导致死锁。socket会把其他线程停掉，fork后是干净的
 
+### ActivityThread工作原理
+
+对于一个应用来说是点击lancher后启动的入口
+
+1. ##### 开启消息循环
+
+2. ##### 通知ActivityManagerService
+
+3. ##### 添加GCWatcher
+
+[acttivity之内容分析](https://www.cnblogs.com/awkflf11/p/12662986.html)
+
 [Activity的启动流程这一篇够了](https://www.jianshu.com/p/d7364591f1d1)
 
 # 日志采集框架
@@ -720,6 +754,8 @@ Binder里有很多线程在跑。fork会把进程里面当前线程复制过去�
 **参考面试题**
 
 [2020 最新 - 今日头条 Android 面试题及答案 (已拿到 offer)](https://www.jianshu.com/p/5e5908ab3ea9)
+
+[我的杭州面试之旅](https://posts.careerengine.us/p/5e9f8187f4141f0e0f365f3e)
 
 
 

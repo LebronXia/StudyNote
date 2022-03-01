@@ -330,10 +330,6 @@ private void considerNotify(ObserverWrapper observer) {
     }
 ```
 
-
-
-
-
 [Android 面试总结 - LiveData](https://juejin.cn/post/6991168529454088228)
 
 [Android 面试总结 - LiveData(二)](https://juejin.cn/post/6991497263457501221)
@@ -774,6 +770,20 @@ step 3：比对已下载文件大小和将要下载的文件总大小（contentL
 
 step 4：再即将发起下载请求的 HTTP 头部中添加即将下载的文件大小范围（Range: bytes = downloadLength - contentLength)
 
+addInterceptor（应用拦截器）：
+1，不需要担心中间过程的响应,如重定向和重试.
+2，总是只调用一次,即使HTTP响应是从缓存中获取.
+3，观察应用程序的初衷. 不关心OkHttp注入的头信息如: If-None-Match.
+4，允许短路而不调用 Chain.proceed(),即中止调用.
+5，允许重试,使 Chain.proceed()调用多次.
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+addNetworkInterceptor（网络拦截器）：
+1，能够操作中间过程的响应,如重定向和重试.
+2，当网络短路而返回缓存响应时不被调用.
+3，只观察在网络上传输的数据.
+4，携带请求来访问连接.
+
 [谈谈OKHttp的几道面试题](https://www.jianshu.com/p/7cb9300c6d71)
 
 [android 快速请求取消,Android OkHttp + Retrofit 取消请求的方法](https://blog.csdn.net/weixin_35439783/article/details/117777344)
@@ -788,7 +798,7 @@ step 4：再即将发起下载请求的 HTTP 头部中添加即将下载的文�
 
 - 如何将这些生命周期对象纳入监测
 
-在确定待检测对象与时机后，查看ObjectWatcher的expectWeaklyReachable方法，可以得知如何实现将泄露对象从待检测对象（默认即上节我们分析的那些有生命周期的类对象）挑出来的。确定内存泄露对象的原理是我们常用的WeakReference，其双参数构造函数支持传入一个ReferenceQueue，当其关联的对象回收时，会将WeakReference加入ReferenceQueue中。LeakCanary的做法是继承ReferenceQueue，增加一个值为UUID的属性key，同时将每个需要监测的对象WeakReference以此UUID作为键加入一个map中。这样，在GC过后，removeWeaklyReachableObjects方法通过遍历ReferenceQueue，通过key值删除map中已回收的对象，剩下的对象就基本可以确定发生了内存泄露。
+在确定待检测对象与时机后，查看ObjectWatcher的expectWeaklyReachable方法，可以得知如何实现将泄露对象从待检测对象（默认即上节我们分析的那些有生命周期的类对象）挑出来的。确定内存泄露对象的原理是我们常用的WeakReference，其双参数构造函数支持传入一个ReferenceQueue，当其关联的对象回收时，会将WeakReference加入ReferenceQueue中。LeakCanary用一个集合Set存储被检测activity的key值，然后用一个ReferenceQueue来存储被回收对象对应的弱引用。这样，在GC过后，removeWeaklyReachableObjects方法通过遍历ReferenceQueue，会清除集合中对应的key值，如果没被回收，key值会一直存在集合中，通过判断集合中是否存在相应的key值来判断是否发生内存泄漏。
 
 在确定内存泄露的对象后，就需要其他手段来确定泄露对象引用链了，这一过程开始于checkRetainedObjects方法，跟踪调用可以看到启动了前台服务HeapAnalyzerService，这在我们使用LeakCanary时可以在通知栏看到。服务中调用了HeapAnalyzer的analyze方法进行堆内存分析，由Shark库实现该功能，就不再进行追踪。
 
