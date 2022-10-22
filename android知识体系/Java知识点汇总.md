@@ -42,6 +42,12 @@ CAS 其实是一种乐观锁，一般有三个值，分别为：赋值对象，�
 
 AtomicInteger内部采用CAS原理
 
+**阻塞队列**
+
+最常使用的例子就是**生产者消费者模式**
+
+lock锁+多个条件（condition）的阻塞控制
+
 **线程安全的集合和类型**
 
 CopyOnWriteArrayList
@@ -75,11 +81,17 @@ LinkBlockingQueue
 
  执行 a = a++ 操作，原先已经执行了 a++ 操作，这个时候将 a++ 中 a 赋值给 int a ，所以会将栈中的数据赋值到 局部变量表中，所以这个时候局部变量表中的数据就是88了
 
+
+
+JVMTI OOM监控
+
 [JVM那点事-对象的自救计划（对象被设为null会被回收吗？）](https://www.jianshu.com/p/0618241f9f44)
 
 [JVM内存结构——运行时数据区](https://www.cnblogs.com/zhengbin/p/5617023.html)
 
 [【死磕JVM】一道面试题引发的“栈帧”！！！](https://www.cnblogs.com/mingyueyy/p/14538754.html)
+
+![image-20220423111925307](../assets/Java知识点汇总/image-20220423111925307.png)
 
 # 集合
 
@@ -96,26 +108,37 @@ ArrayList 的默认大小是 10 个元素。扩容点规则是，新增的时候
 ## HashMap
 
 - HashMap的底层数据结构？
-
 - HashMap的存取原理？
-
 - Java7和Java8的区别？
-
 - 为啥会线程不安全？
-
 - 有什么线程安全的类代替么?
-
 - 默认初始化大小是多少？为啥是这么多？为啥大小都是2的幂？
-
 - HashMap的扩容方式？负载因子是多少？为什是这么多？
-
 - HashMap的主要参数都有哪些？
-
 - HashMap是怎么处理hash碰撞的？
-
 - hash的计算规则
+- HashMap容量为什么是2的n次方？如何做到的
+- 头插法 尾插法
 
 HashMap基于hashing原理，我们通过put()和get()方法储存和获取对象。当我们将键值对传递给put()方法时，它调用键对象的hashCode()方法来计算hashcode，让后找到bucket位置来储存值对象。当获取对象时，通过键对象的equals()方法找到正确的键值对，然后返回值对象。HashMap使用链表来解决碰撞问题，当发生碰撞了，对象将会储存在链表的下一个节点中。 HashMap在每个链表节点中储存键值对对象。
+
+**HashMap在put数据时是如何找到要存放的位置的**
+
+HashMap容量取2的n次方，主要与hash寻址有关。在put(key,value)时，putVal()方法中通过i = (n - 1) & hash来计算key的散列地址。其实，i = (n - 1) & hash是一个%操作。也就是说，HashMap是通过%运算来获得key的散列地址的。但是，%运算的速度并没有&的操作速度快。而&操作能代替%运算，必须满足一定的条件，也就是a%b=a&(b-1)仅当b是2的n次方的时候方能成立。这也就是为什么HashMap的容量需要保持在2的n次方了。
+
+
+hashcode计算时，会做右移16位的操作，根据数组长度和新哈希码值计算数组下标的地方
+
+为什么是n-1，n代表数组的长度，为2的x次幂的数，故（n-1）代表的二进制全为1
+
+p = tab[i = (n - 1) & hash]
+
+头插法  尾插法
+
+**主要是为了安全,防止环化**
+因为resize的赋值方式，也就是使用了**单链表的头插入方式，同一位置上新元素总会被放在链表的头部位置**，在旧数组中同一条Entry链上的元素，通过重新计算索引位置后，有可能被放到了新数组的不同位置上。
+
+使用头插会改变链表的上的顺序，但是如果使用尾插，在扩容时会保持链表元素原本的顺序，就不会出现链表成环的问题了
 
 [列举2个线程安全的集合类_Java面试题：Java中的集合及其继承关系](https://blog.csdn.net/weixin_28878185/article/details/113534446)
 
@@ -124,6 +147,13 @@ HashMap基于hashing原理，我们通过put()和get()方法储存和获取对�
 [吊打面试官》系列-ConcurrentHashMap & Hashtable](https://juejin.cn/post/6844904023003250701)
 
 [hash的问题](https://www.jianshu.com/p/45fa4e80b631)
+
+TreeMap的实现是红黑树算法的实现
+
+1. TreeMap中的元素，key是升序的唯一，value是无序，不唯一
+
+put(key,value)：当我们调用该方法时，首先会以根节点为当前节点，通过比较添加的节点与根节点的大0小，当该节点大于根节点且该根节点有右子节点，将会将该右字节点继续比较；当该节点小于根节点且该节点有左子节点时，将会将该左字节点继续比较；当该节点和根节点相等时，此时将会覆盖此处的值；依次重复比较，直到找到该位置，即当小于根节点就将该节点挂在该根节点的左节点上，当大于根节点就将该节点挂在该根节点的右子树上
+get(key)：通过key值找value值，首先从根节点作为起始位置，和根节点的key值进行比较，如果大于该根节点，说明该key位置在根节点的右侧，将根节点的右节点作为新的根节点，继续比较（这其中就排除了另根的左子树上所有的集合，类似折半查找的思想，提高了查找的效率）；同理，如果小于根节点的key值，说明在该key在根节点的左侧，将根节点的左节点作为新的根节点，继续比较；如果根节点的key和我们的key值相等，则说明此时找到到了该值，将该节点的value值进行返回即可；不断地重复上述（类似递归的思想），直到找到对应key值
 
 # Serializable和Parcelable
 
@@ -217,12 +247,20 @@ public ThreadPoolExecutor(int corePoolSize,
 
 **拒绝策略有几种**
 
-
 ThreadPoolExecutor.AbortPolicy:丢弃任务并抛出RejectedExecutionException异常。 
 ThreadPoolExecutor.DiscardPolicy：也是丢弃任务，但是不抛出异常。 
 ThreadPoolExecutor.DiscardOldestPolicy：丢弃队列最前面的任务，然后重新尝试执行任务（重复此过程）
 ThreadPoolExecutor.CallerRunsPolicy：由调用线程处理该任务 
 
+
+
+1）当提交一个新任务到线程池时，线程池判断corePoolSize线程池是否都在执行任务，如果有空闲线程，则从核心线程池中取一个线程来执行任务，直到当前线程数等于corePoolSize；
+
+2）如果当前线程数为corePoolSize，继续提交的任务被保存到阻塞队列中，等待被执行；
+
+3）如果阻塞队列满了，那就创建新的线程执行当前任务，直到线程池中的线程数达到maxPoolSize，这时再有任务来，由饱和策略来处理提交的任务
+
+无任务执行时，线程池其实是利用阻塞队列的take方法挂起，从而维持核心线程的存活
 
 CPU密集型：核心线程数 = CPU核数 + 1
 IO密集型：核心线程数 = CPU核数 * 2
@@ -234,6 +272,8 @@ IO密集型：核心线程数 = CPU核数 * 2
 [Android 线程和线程池一篇就够了](https://juejin.cn/post/6844903480193187854)
 
 [java线程池如何配置核心线程数](https://www.cnblogs.com/xy-ouyang/p/14718195.html)
+
+[基础篇：高并发一瞥，线程和线程池的总结](https://juejin.cn/post/6854573219341402119#heading-2)
 
 # 类加载
 
@@ -258,11 +298,6 @@ IO密集型：核心线程数 = CPU核数 * 2
 [深入探讨 Java 类加载器](https://blog.csdn.net/gongxiao1993/article/details/81351988)
 
 [类加载机制](https://lrh1993.gitbooks.io/android_interview_guide/content/java/virtual-machine/classloader.html)
-
-# Kotlin
-
-- kotlin扩展函数底层原理
-- Kotlin inner 关键字
 
 # 基础知识：
 
@@ -346,6 +381,8 @@ public class Test {
 在java源文件中的泛型在编译后的.class文件中都将被擦除，类加载的时候擦除
 
 [深入理解 Java 泛型：类型擦除、通配符、运行时参数类型获取](https://blog.csdn.net/hustspy1990/article/details/78048493)
+
+[换个姿势，十分钟拿下Java/Kotlin泛型](https://juejin.cn/post/7133125347905634311)
 
 ## 代理
 

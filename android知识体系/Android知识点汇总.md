@@ -23,33 +23,6 @@ WMS 在 addWindow 时，会根据当前 Window 对象的 Token 进行校验
 
 [为什么不能使用 Application Context 显示 Dialog？](https://juejin.cn/post/6867390363020361742)
 
-# Window
-
-- Activity、View、Window 之间的关系
-- View.post 为什么可以获取到 View 的宽高
-- Activity中的Window的初始化和显示过程
-
-Activity 是四大组件之一，也是我们的界面载体，可以展示页面；而 View 实际上就是一个一个的视图，这些视图可以搭载在一个 Layout 文件上，通过 Activity 的 `setContentView()` 方法传递给 Activity；Window 是一个窗体，每个 Activity 对应一个 Window，通常我们在代码中用 getWindow() 来获取它。
-
-**Activity中的Window的初始化和显示过程**
-
-1 Activity在其attach方法中创建了Window，实际上创建的是PhoneWindow，并通过各种回调等建立起与Activity的联系，我们在Activity中使用getWindow（）所得到的即是这个创建的Window。
-2 在PhoneWindow中装载了一个顶级的View，即DecorView，它实际是一个FrameLayout，并通过各种主题样式选择加载不同的视图来填充DecorView，这部分被称作mContentRoot。
-3 setContentView设置我们自己需要展示的视图，这部分视图被填充到了DecorView的一块子ViewGroup中，这块子ViewGroup被称作contentParent。
-4 DecorView最终是通过WindowManager的addView方法添加到Window的，并且最终在Activity的onResume方法执行后显示出来。
-5 在使用requestWindowFeature来设置样式时，实际上是调用了PhoneWindow的requestFeature方法，会将样式存储在Window的mLocalFeatures变量中，当installDecor时，会应用这些样式。也就是说，当需要通过requestWindowFeature来请求样式时，应该在setContentView方法之前调用，因为setContentView方法的调用会导致DecorView的创建并应用样式，如果在之后调用则会导致不会生效，因为此时DecorView已经创建完成了。
-
-
-
-将我们调用 View.post 方法传入的 Runnable 发送到主线程的消息队列，消息是同步类型，也就是放在HandleActionQueue中。Handler 的消息队列循环过程中，在一个消息执行完之后才会取下一个消息。因为这一特性，所以在异步消息没执行完之前，消息队列中的消息是不会执行的。所以调用了 HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们不会被立即执行，等 performTraversals 方法执行完，也就是异步消息结束之后， HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们才会被执行。ViewRoomImpl 的 performTraversals 方法注释 1 处，开始了 View 绘制流程，依次是测量 performMeasure、布局 performLayout 和绘制 performDraw，这三个方法走完，标志着我们的 UI 已经完成显示了。
-
-[简析Window、Activity、DecorView以及ViewRoot之间的错综关系](https://www.jianshu.com/p/8766babc40e0)
-
-[View.post 为什么可以获取到 View 的宽高](https://juejin.cn/post/6994044328918122510#heading-3)
-[震惊！Android子线程也能修改UI？](https://www.jianshu.com/p/1b2ccd3e1f1f)
-
-[Android Activity之Window的创建过程](https://blog.csdn.net/qq_28261343/article/details/78817184)
-
 # Activity Service 四大组件
 
 - 对Activity的理解是什么
@@ -82,6 +55,18 @@ Activity 是四大组件之一，也是我们的界面载体，可以展示页�
 
 [Android Handler：详解 Handler 内存泄露的原因](https://www.jianshu.com/p/ed9e15eff47a)
 
+# ContentProvider
+
+Android系统为什么会设计ContentProvider，进程共享和线程安全问题
+
+1）提供一种跨进程数据共享的方式：
+
+由系统来管理ContentProvider的创建、生命周期及访问的线程分配，简化我们在应用间共享数据（进程间通信）的方式。我们只管通过ContentResolver访问ContentProvider所提示的数据接口，而不需要担心它所在进程是启动还是未启动 。
+
+（2）更好的数据访问权限管理：
+
+ContentProvider可以对开发的数据进行权限设置，不同的URI可以对应不同的权限，只有符合权限要求的组件才能访问到ContentProvider的具体操作
+
 # Handle机制
 
 - Looper.loop()为什么不会阻塞主线程
@@ -96,8 +81,15 @@ Activity 是四大组件之一，也是我们的界面载体，可以展示页�
 5. 子线程有哪些更新UI的方法。
 6. 子线程中Toast，showDialog，的方法。（和子线程不能更新UI有关吗）
 7. 如何处理Handler 使用不当导致的内存泄露？
+7. Handle内存泄漏，最终谁持有了activity
 
 [**Android消息机制**](https://github.com/interviewandroid/AndroidInterView/blob/master/study/framework/Android%E6%B6%88%E6%81%AF%E6%9C%BA%E5%88%B6.md)
+
+一句话说清原理：
+
+Handler通过sendMessage发送消息，将消息放入MessageQueue中，在MessageQueue中通过时间的维度来进行排序，Looper通过调用loop方法不断的从MessageQueue中获取消息，执行Handler的dispatchMessage，最后调用handleMessage方法。
+
+首先在主线程里会有创建一个Looper对象保存在threadLocal中，这个Loop同时持有了一个MessageQueue对象。染回创建handle获取looper中的messageQueue对象，在不同线程调用sendMessage把消息放入到MessageQueue队列。有消息时会唤起Loop的loop方法循环查询，调用dispatvhMessage处理，最后调用了handleMessage
 
 说到Handler，就不得不提与之密切相关的这几个类：Message、MessageQueue，Looper。
 
@@ -115,13 +107,37 @@ loop()。这个方法开启了整个事件机制的轮询。它的本质是开�
 
 处理消息。消息处理的核心其实就是dispatchMessage()这个方法。这个方法里面的逻辑很简单，先判断msg.callback是否为null，如果不为空则执行这个runnable。如果为空则会执行我们的handleMessage方法。
 
+**IdleHandler**
+
 IdleHandler是主线程在开始加载页面完成后调用的方法，可以提高性能
+
+IdleHandler是一个回调接口，可以通过MessageQueue的addIdleHandler添加实现类。当MessageQueue中的任务暂时处理完了（没有新任务或者下一个任务延时在之后），这个时候会回调这个接口，返回false，那么就会移除它，返回true就会在下次message处理完了的时候继续回调。
+
+**同步屏障**
+
+屏障消息就是为了确保异步消息的优先级，设置了屏障后，只能处理其后的异步消息，同步消息会被挡住，除非撤销屏障。
+
+**为什么系统不建议在子线程访问UI**
+
+在某些情况下，在子线程中是可以更新UI的。但是在ViewRootImpl中对UI操作进行了checkThread，但是我们在OnCreate和onResume中可以使用子线程更新UI，由于我们在ActivityThread中的performResumeActivity方法中通过addView创建了ViewRootImpl，这个行为是在onResume之后调用的，所以在OnCreate和onResume可以进行更新UI。
 
 **Loop 死循环，为什么没有阻塞 主线程**
 
 - 真正会卡死主线程的操作是在回调oncreat、onstart、onresume中，会导致卡帧，甚至ANR
 - 涉及linux pipe机制,主线程中messaequeue没有消息，会阻塞loope 中queue.next，会释放CPU资源。直到下个消息往管道里写数据时会唤起主线程工作。
 - epoll机制多路复用机制，监控多个描述符，某个描述符就位时，立刻通知读写
+
+这里就涉及到Linux pipe/epoll机制，简单说就是在主线程的MessageQueue没有消息时，便阻塞在loop的queue.next()中的nativePollOnce()方法里，此时主线程会释放CPU资源进入休眠状态，直到下个消息到达或者有事务发生，通过往pipe管道写端写入数据来唤醒主线程工作。这里采用的epoll机制，是一种IO多路复用机制，可以同时监控多个描述符，当某个描述符就绪(读或写就绪)，则立刻通知相应程序进行读或写操作，本质同步I/O，即读写是阻塞的。 
+
+**Handle内存泄漏，最终谁持有了activity**
+
+activityThread  ->  looper ->messageQueue -> msg -> handler -> activity
+
+HandlerThread 是一个具有消息循环的Thread，里面用到了Syncronized线程同步
+
+**[Android 中 MessageQueue 的 nativePollOnce ](https://www.cnblogs.com/jiy-for-you/p/11707356.html)**
+
+方法用于“等待”, 直到下一条消息可用为止.
 
 [Handler 面试相关](https://blog.csdn.net/pengyu1801/article/details/104718819/)
 
@@ -158,15 +174,60 @@ IdleHandler是主线程在开始加载页面完成后调用的方法，可以提
 
 [**Android 中的进程通信方式**](https://links.jianshu.com/go?to=https%3A%2F%2Fblog.csdn.net%2Fu011240877%2Farticle%2Fdetails%2F72863432)：AIDL(基于 Binder)、Messenger (基于 Binder)、Socket、Binder (基于 mmp 共享内存)、文件
 
+**文件共享：**
+
+对同一个文件先后写读，从而实现传输，Linux机制下，可以对文件并发写，所以要注意同步。顺便一提，Windows下不支持并发读或写。
+
+**Messenger：**
+
+Messenger是基于AIDL实现的，服务端（被动方）提供一个Service来处理客户端（主动方）连接，维护一个Handler来创建Messenger，在onBind时返回Messenger的binder。
+
+双方用Messenger来发送数据，用Handler来处理数据。Messenger处理数据依靠Handler，所以是串行的，也就是说，Handler接到多个message时，就要排队依次处理。
+
+**AIDL：**
+
+AIDL通过定义服务端暴露的接口，以提供给客户端来调用，AIDL使服务器可以并行处理，而Messenger封装了AIDL之后只能串行运行，所以Messenger一般用作消息传递。
+
+通过编写aidl文件来设计想要暴露的接口，编译后会自动生成响应的java文件，服务器将接口的具体实现写在Stub中，用iBinder对象传递给客户端，客户端bindService的时候，用asInterface的形式将iBinder还原成接口，再调用其中的方法。
+
+**ContentProvider：**
+
+系统四大组件之一，底层也是Binder实现，主要用来为其他APP提供数据，可以说天生就是为进程通信而生的。自己实现一个ContentProvider需要实现6个方法，其中onCreate是主线程中回调的，其他方法是运行在Binder之中的。自定义的ContentProvider注册时要提供authorities属性，应用需要访问的时候将属性包装成Uri.parse("content://authorities")。还可以设置permission，readPermission，writePermission来设置权限。 ContentProvider有query，delete，insert等方法，看起来貌似是一个数据库管理类，但其实可以用文件，内存数据等等一切来充当数据源，query返回的是一个Cursor，可以自定义继承AbstractCursor的类来实现。
+
+**Socket：**
+
+学过计算机网络的对Socket不陌生，所以不需要详细讲述。只需要注意，Android不允许在主线程中请求网络，而且请求网络必须要注意声明相应的permission。然后，在服务器中定义ServerSocket来监听端口，客户端使用Socket来请求端口，连通后就可以进行通信。
+
+# 多线程开发
+
+
+
 [面试官：说说多线程并发问题](https://juejin.cn/post/6844903941830869006)
+
+[面试必备：Kotlin 线程同步的 N 种方法](https://juejin.cn/post/6981952428786597902)
 
 # UI适配方案
 
 - 对于 UI 稿的 px 是如何适配的
 
+今日头条方案
+
+动态改变 density 进行适配，适配后的 density = 设备真实宽度(单位 px) / 设计稿的宽度（单位 dp）
+
+宽高限定方案
+
+- 将屏幕宽度均分为 1080 份，每份 1 px，声明 1080 个 key 值，值从 1 px 开始递增，每次递增 1 px
+- 将屏幕高度均分为 1920 份，每份 1 px，声明 1920 个 key 值，值从 1 px 开始递增，每次递增 1 px
+
+smallWidth
+
+即最小宽度，指的是最短的那一个边长，而不考虑屏幕的方向
+
 [一文读懂 Android 主流屏幕适配方案](https://juejin.cn/post/6999445137491230728)
 
 [今日头条屏幕适配方案终极版正式发布!](https://juejin.cn/post/6844903697000972295)
+
+[一种极低成本的Android屏幕适配方式（今日头条）](https://mp.weixin.qq.com/s?__biz=MzI1MzYzMjE0MQ==&mid=2247484502&idx=2&sn=a60ea223de4171dd2022bc2c71e09351&scene=21#wechat_redirect)
 
 # Bitmap
 
@@ -190,6 +251,14 @@ ARGB_4444：表示16位位图，每像素占2byte内存（poor quality - Android
 ARGB_8888：表示32位ARGB位图，每像素占4byte内存（Recommended）
 
 利用的就是inBitmap指定将要重复利用的Bitmap对象的内存。同时需要指定inMutable=true表示对象是可变的。如果inPreferredConfig = android.graphics.Bitmap.Config.HARDWARE，inMutable属性永远为false。
+
+**下载一张很大的图，如何保证不 oom**
+
+通过二次采样，对inSampleSize重新设置
+
+如果不允许压缩 则用**BitmapRegionDecoder**
+
+
 
  **图片储存优化**
 
@@ -230,6 +299,10 @@ ARGB_8888：表示32位ARGB位图，每像素占4byte内存（Recommended）
 
 ```
 
+Android 8.0 之后Bitmap像素内存放在native堆，到了Android3.0之后，Bitmap的内存则已经全部分配在VM堆上，这两种分配方式的区别在于，Native堆的内存不受Dalvik虚拟机的管理，我们想要释放Bitmap的内存，必须手动调用Recycle方法。
+
+[android bitmap的内存分配和优化](https://cloud.tencent.com/developer/article/1034445)
+
 [Android 图片压缩最常用的几种方法!](https://www.jianshu.com/p/1f69238b8874)
 
 [Android性能优化系列之Bitmap图片优化](https://blog.csdn.net/u012124438/article/details/66087785)
@@ -247,18 +320,16 @@ ARGB_8888：表示32位ARGB位图，每像素占4byte内存（Recommended）
 # APP打包流程
 
 - aapt 工具打包资源文件，生成 R.java 文件
-
 - aidl 工具处理 AIDL 文件，生成对应的 .java 文件
-
 - javac 工具编译 Java 文件，生成对应的 .class 文件
-
 - 把 .class 文件转化成 Davik VM 支持的 .dex 文件
-
 - apkbuilder 工具打包生成未签名的 .apk 文件
-
 - jarsigner 对未签名 .apk 文件进行签名
-
 - zipalign 工具对签名后的 .apk 文件进行对齐处理
+
+AAPT 和 AAPT2 的区别
+
+使用AAPT2替代了 AAPT 来编译 Android 资源。AAPT2 实现了资源的增量编译，它将资源的编译拆分成 Compile 和 Link 两个步骤。前者资源文件以二进制形式编译 Flat 格式，后者合并所有的文件再打包
 
 ## Apk签名
 
@@ -277,7 +348,11 @@ V2是对整个zip包进行签名，而且在zip包中增加了 一个apk signatu
 # Binder机制
 
 - 介绍下 Binder 机制，与内存共享机制有什么区别
-- Binder如何跨进程
+- Binder机制如何跨进程
+- Binder是如何做到一次性拷贝的
+- MMAP的原理
+- 为什么Intent不能传递大数据
+- 四大组件底层通信如何实现
 
 Binder是基于C/S架构的，简单解释下C/S架构，是指客户端(Client)和服务端(Server)组成的架构，Client端有什么需求，直接发送给Server端去完成，架构清晰明朗，Server端与Client端相对独立，稳定性较好；而共享内存实现方式复杂，没有客户与服务端之别， 需要充分考虑到访问临界资源的并发同步问题，否则可能会出现死锁等问题；从这稳定性角度看，Binder架构优越于共享内存。
 
@@ -297,6 +372,31 @@ ServiceManager通过Binder驱动返回服务端的代理对象。
 
 客户端拿到服务端的代理对象后即可进行进程间通信。
 
+跨进程是内核空间和物理内存有映射关系，另一进程也一样，所以共享了
+
+MMAP:Linux通过将一个虚拟内存区域与一个磁盘上对象关联起来，以初始化这个虚拟内存区域的内容，这个过程称为内存映射（mmap）
+
+MMAP作用让一块虚拟内存指向已知的一块物理内存，（物理内存是binder提供的）
+
+
+
+**四大组件底层通信如何实现**
+
+都是Binder通信
+
+bindService: 
+
+1. 客户端进程与ServiceManager通信获得AMS的iBinder
+2. 客户端通过AMS的Binder与AMS通信，请求biindService
+3. AMS与服务端进程通信执行Service的onBind
+4. 服务端进程与ServiceManager通信获得AMS的IBinder
+5. 服务端进程通过AMS的IBinder与AMS通信，发布自己的Binder给AMS
+6. AMS与客户端通信，转发服务端的IBiinder(代理BinderProxy)
+
+**intent不能传递大数据**
+
+底层是binder通信，大小受共享内存限制，同步传递为(1M-8k)。异步传递大小为1/2大小。
+
 [为什么 Android 要采用 Binder 作为 IPC 机制](https://www.zhihu.com/question/39440766/answer/89210950)
 
 [Carson带你学Android：图文详解Binder跨进程通信原理](https://www.jianshu.com/p/4ee3fd07da14)
@@ -304,6 +404,8 @@ ServiceManager通过Binder驱动返回服务端的代理对象。
 # 事件分发
 
 - View、ViewGroup的事件传递机制，如何解决滑动冲突？ 回答如何滑动-冲突最好是举出实际的场景和怎么解决的
+
+1个点击事件发生后，事件先传到`Activity`、再传到`ViewGroup`、最终再传到 `View`
 
 整个View的事件转发流程是：
 
@@ -342,21 +444,117 @@ Android事件分发是先传递到ViewGroup，再由ViewGroup传递到View的。
 
 3、子View可以通过调用getParent().requestDisallowInterceptTouchEvent(true);  阻止ViewGroup对其MOVE或者UP事件进行拦截；
 
+
+
+ dispatchTouchEvent()返回true，后续事件（ACTION_MOVE、ACTION_UP）会再传递，如果返回false，dispatchTouchEvent()就接收不到ACTION_UP、ACTION_MOVE
+
 [Android事件分发机制详解：史上最全面、最易懂](https://www.jianshu.com/p/38015afcdb58)
 
-# 自定义View
+[Android中的dispatchTouchEvent()、onInterceptTouchEvent()和onTouchEvent()](https://blog.csdn.net/xyz_lmn/article/details/12517911)
+
+# WindowMangerSerivce
+
+- Activity、View、Window 之间的关系
+
+- View.post 为什么可以获取到 View 的宽高
+
+- Activity中的Window的初始化和显示过程
+
+- Activity如何与wiindow与view进行分工合作
+
+  
+
+Activity 是四大组件之一，也是我们的界面载体，可以展示页面；而 View 实际上就是一个一个的视图，这些视图可以搭载在一个 Layout 文件上，通过 Activity 的 `setContentView()` 方法传递给 Activity；Window 是一个窗体，每个 Activity 对应一个 Window，通常我们在代码中用 getWindow() 来获取它。
+
+**Activity中的Window的初始化和显示过程**
+
+1 Activity在其attach方法中创建了Window，实际上创建的是PhoneWindow，并通过各种回调等建立起与Activity的联系，我们在Activity中使用getWindow（）所得到的即是这个创建的Window。
+2 在PhoneWindow中装载了一个顶级的View，即DecorView，它实际是一个FrameLayout，并通过各种主题样式选择加载不同的视图来填充DecorView，这部分被称作mContentRoot。
+3 setContentView设置我们自己需要展示的视图，这部分视图被填充到了DecorView的一块子ViewGroup中，这块子ViewGroup被称作contentParent。
+4 DecorView最终是通过WindowManager的addView方法添加到Window的，并且最终在Activity的onResume方法执行后显示出来。
+5 在使用requestWindowFeature来设置样式时，实际上是调用了PhoneWindow的requestFeature方法，会将样式存储在Window的mLocalFeatures变量中，当installDecor时，会应用这些样式。也就是说，当需要通过requestWindowFeature来请求样式时，应该在setContentView方法之前调用，因为setContentView方法的调用会导致DecorView的创建并应用样式，如果在之后调用则会导致不会生效，因为此时DecorView已经创建完成了。
+
+将我们调用 View.post 方法传入的 Runnable 发送到主线程的消息队列，消息是同步类型，也就是放在HandleActionQueue中。Handler 的消息队列循环过程中，在一个消息执行完之后才会取下一个消息。因为这一特性，所以在异步消息没执行完之前，消息队列中的消息是不会执行的。所以调用了 HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们不会被立即执行，等 performTraversals 方法执行完，也就是异步消息结束之后， HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们才会被执行。ViewRoomImpl 的 performTraversals 方法注释 1 处，开始了 View 绘制流程，依次是测量 performMeasure、布局 performLayout 和绘制 performDraw，这三个方法走完，标志着我们的 UI 已经完成显示了。
+
+[简析Window、Activity、DecorView以及ViewRoot之间的错综关系](https://www.jianshu.com/p/8766babc40e0)
+
+[View.post 为什么可以获取到 View 的宽高](https://juejin.cn/post/6994044328918122510#heading-3)
+[震惊！Android子线程也能修改UI？](https://www.jianshu.com/p/1b2ccd3e1f1f)
+
+[Android Activity之Window的创建过程](https://blog.csdn.net/qq_28261343/article/details/78817184)
+
+
+
+# UI渲染
+
+**Android屏幕刷新机制。**
+
+1， 界面上任何一个 View 的刷新请求最终都会走到 ViewRootImpl 中的 scheduleTraversals() 里来安排一次遍历绘制 View 树的任务；
+
+2， scheduleTraversals() 会先过滤掉同一帧内的重复调用，在同一帧内只需要安排一次遍历绘制 View 树的任务即可，这个任务会在下一个屏幕刷新信号到来时调用 performTraversals() 遍历View 树，遍历过程中会将所有需要刷新的 View 进行重绘；
+
+3接着 scheduleTraversals() 会往主线程的消息队列中发送一个同步屏障，拦截这个时刻之后所有的同步消息的执行，但不会拦截异步消息，以此来尽可能的保证当接收到屏幕刷新信号时可以尽可能第一时间处理遍历绘制 View 树的工作；
+
+4 发完同步屏障后 scheduleTraversals() 才会开始安排一个遍历绘制 View 树的操作，作法是把 performTraversals() 封装到 Runnable 里面，然后调用 Choreographer 的 postCallback() 方法；
+
+5，postCallback() 方法会先将这个 Runnable 任务以当前时间戳放进一个待执行的队列里，然后如果当前是在主线程就会直接调用一个native 层方法，如果不是在主线程，会发一个最高优先级的 message 到主线程，让主线程第一时间调用这个 native 层的方法；
+
+6， native 层的这个方法是用来向底层注册监听下一个屏幕刷新信号，当下一个屏幕刷新信号发出时，底层就会回调 Choreographer 的onVsync() 方法来通知上层 app；
+
+7，onVsync() 方法被回调时，会往主线程的消息队列中发送一个执行 doFrame() 方法的消息，这个消息是异步消息，所以不会被同步屏障拦截住；
+
+8，doFrame() 方法会去取出之前放进待执行队列里的任务来执行，取出来的这个任务实际上是 ViewRootImpl 的 doTraversal() 操作；
+
+9，上述第4步到第8步涉及到的消息都手动设置成了异步消息，所以不会受到同步屏障的拦截；
+
+10，doTraversal() 方法会先移除主线程的同步屏障，然后调用 performTraversals() 开始根据当前状态判断是否需要执行performMeasure() 测量、perfromLayout() 布局、performDraw() 绘制流程，在这几个流程中都会去遍历 View 树来刷新需要更新的View；
+
+# View绘制
 
 - View、ViewGroup的绘制流程
 - Android子线程也能修改UI
 - requestLayout，invalidate 的区别
+- onResume函数中度量宽高有效吗
+- 线程中view.setText一定报错吗，为什么
+- view的创建过程
+
+绘制原理：View 的 requestLayout 和 ViewRootImpl##setView 最终都会调用 ViewRootImpl 的 requestLayout 方法。然后通过 scheduleTraversals 方法提交绘制任务，然后再通过DisplayEventReceiver向底层请求vsync垂直同步信号，当vsync信号来的时候，通过JNI回调回来，再通过Handler往消息队列post一个异步任务，最终是ViewRootImpl去执行绘制任务，最后调用performTraversals方法，完成绘制。
+
+绘制流程：
+
+![image-20220424231058584](../assets/Android知识点汇总/image-20220424231058584.png)
+
+onCreate和onResume 子线程都可以刷新UI， （ 添加decoView关联wm操作，是在执行完onResume方法后才执行，）
+
+**onMeasure职责**
+
+进行测量
+
+![image-20220424235349545](../assets/Android知识点汇总/image-20220424235349545.png)
 
 **requestLayout，invalidate 的区别**
 
 1. requeLayout() : 控件会重新执行 onMesure() onLayout() ,比如 ScrollView中有LinearLaout ，LinearLayout里面有纵向排列的ImageView和TextView,那么假如ImageView的长宽发生了变化，而要立即在手机上显示这个变化的话，就可调用 imageView.requestLayout();这样的话ScrollView 会重新执行onMesure()这个方法会确定控件的大小然后在确定出自己的宽高，最后在执行onLayout()，这个方法是对所有的子控件进行定位的。他只调用measure()和layout()过程，不会调用draw()。
-
 2. invalidate() :是自定义View 的时候，重新执行onDraw()方法，当view只在内容和可见度方面发生变化时调用。
-
 3. layout()：对控件进行重新定位执行onLayout()这个方法，比如要做一个可回弹的ScrollView，思路就是随着手势的滑动子控件滑动，那么我们可以将ScrollView的子控件调用layout（l,t,r,b）这个方法就行了。
+
+#### MeasureSpec
+
+- EXACTLY: （match_parent或者 精确数据值）精确模式，对应的数值就是MeasureSpec当中的size。
+- AT_MOST:(wrap_content)最大值模式，View的尺寸有一个最大值，View不超过MeasureSpec当中的Size值。
+- UNSPECIFIED：（一般系统使用）无限制模式，View设置多大就给他多大。
+
+**绘制流程**
+
+measure() 
+
+测量宽高 MeasureSpec，ViewGroup中并没有measure()也没有onMeasure()
+
+layout()
+
+根据测量完的数据进行定位  View.java的onLayout方法是空实现:因为子View的位置，是由其父控件的onLayout方法来确定的
+
+draw()
 
 可以看到一般情况下View的draw流程分为四步：
 
@@ -391,6 +589,8 @@ Android事件分发是先传递到ViewGroup，再由ViewGroup传递到View的。
 
 [面试官问你：自定义View跟绘制流程懂吗？帮你搞定面试官](https://blog.csdn.net/c10wtiybq1ye3/article/details/103415297)
 
+[Android图形系统（四）应用篇：自定义View/ViewGroup详解](https://juejin.cn/post/7140332948485570596)
+
 # Recyleview
 
 - 按下列表item的button 同时上下滑动RecyclerView 事件是怎么处理的
@@ -401,7 +601,7 @@ Android事件分发是先传递到ViewGroup，再由ViewGroup传递到View的。
 
 - **Scrap**:屏幕内部的 ItemView,通过数据集的 Position 找到的，**可以直接复用不需要绑定**
 - **Cache**:移出屏幕的 ItemView 放入一个CacheView（默认个数为2），就是比屏幕多两个 ItemView， 方便来回翻少量的View，**可以直接复用不需要绑定**
-- **ViewCacheExtension**:用户自定义的缓存机制
+- **ViewCacheExtension**:用户自定义的缓存机制 
 
 > **ViewCacheExtension Example **
 >
@@ -452,6 +652,16 @@ RecyclerView.ViewHolder viewHolder = mRecyclerView.findViewHolderForAdapterPosit
             }
 ```
 
+**RecyclerView加载多图速度优化方案**
+
+1、控制线程数量 + 数据分页加载
+
+我们在使用滑动控件呈现图片数据时，显然都会在getView方法里创建新的线程去异步加载图片，不可能有一百条或上千条数据一口气全部塞过来吧（当然你要这么干也是可以的），那么根据项目需求必然会进行分页加载，咱一页显示的item条数也别太夸张就好。而且，当我们点击屏幕快速向下滑动时，每个Item都会调用getView一次，必然会创建出很多线程去加载图片的URL资源，控制好线程的数量，加个线程池就非常有必要了。为了避免OOM导致FC，注意图片需要缓存，因为从内存中读取图片资源是非常快的。
+
+2、重写onScrollStateChanged方法
+
+这种方案用的也很普遍，相信只要细心观察，就会发现类似微博、Facebook、或者一些图片壁纸类的APP，在滑动时未加载的图片是不会立刻加载呈现的，只有当滑动停止后才会加载，这里需要注意一点的是，只加载当前屏幕内的图片。这么一说可能有童鞋就明白了。我们可以通过继承RecyclerView去自定义一个滑动控件，通过继承OnScrollListener后重写其 onScrolled方法 和 onScrollStateChanged 等方法来做相应处理。
+
 [让你彻底长我RecyclerView的缓存机制](http://www.360doc.com/content/19/0712/11/36367108_848240455.shtml)
 
 [阿里3轮面试都问了RecyclerView](https://blog.csdn.net/weixin_44339238/article/details/108654771)
@@ -487,6 +697,10 @@ gradle 构建分为三个阶段初始化阶段
 执行阶段
 执行阶段主要做的事情就是执行 task，进行主要的构建工作
 
+构建优化
+
+
+
 # 动画
 
 - 属性动画原理
@@ -502,6 +716,40 @@ Android AOP就是通过预编译方式和运行期动态代理实现程序功能
 
 - ASM是一个框架/库，它为您提供了一个API来操纵现有的字节码和/或轻松生成新的字节码
 - AspectJ是Java语言之上的一种语言扩展，具有它自己的语法，专门用于扩展具有面向方面编程概念的Java运行时的功能。它包含一个编译器/编织器，它可以在编译时或运行时运行
+
+# 存储
+
+
+
+- 第一次从SharedPreference获取值的时候，可能阻塞主线程，造成卡顿／丢帧。
+- **多次commit、apply**
+  - 在onPause之后，如果因为你多次使用了apply，那就意味着写入任务会在这里排队，但是写入文件那里只有一个HandlerThread在串行的执行，那是不是就卡顿了
+  - 
+- 跨进程不安全。由于没有使用跨进程的锁，就算使用MODE_MULTI_PROCESS，
+  SharedPreferences 在跨进程频繁读写有可能导致数据全部丢失。根据线上统计，SP 大
+  约会有万分之一的损坏率。
+- 加载缓慢。SharedPreferences 文件的加载使用了异步线程，而且加载线程并没有设置
+    线程优先级，如果这个时候主线程读取数据就需要等待文件加载线程的结束。这就导致出
+    现主线程等待低优先级线程锁的问题，比如一个 100KB 的 SP 文件读取等待时间大约需
+    要 50~100ms，我建议提前用异步线程预加载启动过程用到的 SP 文件。
+- 全量写入。无论是调用 commit() 还是 apply()，即使我们只改动其中的一个条目，都会
+    把整个内容全部写到文件。而且即使我们多次写入同一个文件，SP 也没有将多次修改合
+    并为一次，这也是性能差的重要原因之一。
+- 卡顿。由于提供了异步落盘的 apply 机制，在崩溃或者其他一些异常情况可能会导致数
+    据丢失。所以当应用收到系统广播，或者被调用 onPause 等一些时机，系统会强制把所
+    有的 SharedPreferences 对象数据落地到磁盘。如果没有落地完成，这时候主线程会被
+    一直阻塞。这样非常容易造成卡顿，甚至是 ANR，从线上数据来看 SP 卡顿占比一般会
+    超过 5%。
+
+MMKV
+
+使用mmap和文件锁保证数据完整
+
+修改插入文件尾部，无需全量写入
+
+使用Protocol Buffer
+
+[Android SharedPreferences该这样优化](https://www.jianshu.com/p/c4fa942d8153?utm_campaign=haruki)
 
 # 序列化
 
@@ -524,6 +772,18 @@ Java的序列化机制是通过在运行时判断类的serialVersionUID来验证
 
 # MVVM
 
+[MVVM](https://www.jianshu.com/p/965f9912d4d7)采用双向数据绑定，view中数据变化将自动反映到viewmodel上，反之，model中数据变化也将会自动展示在页面上。把Model和View关联起来的就是ViewModel。ViewModel负责把Model的数据同步到View显示出来，还负责把View的修改同步回Model。
+
+
+
+![image-20220928234403208](../assets/Android知识点汇总/image-20220928234403208.png)
+
+
+
+MVVM模式与MVP模式最大的区别在于：ViewModel层不持有View层的引用。这样进一步降低了耦合，View层代码的改变不会影响到ViewModel层。
+
+[Android MVC、MVP、MVVM架构](https://www.jianshu.com/p/965f9912d4d7)
+
 [是让人耳目一新的 Jetpack MVVM 精讲啊](https://zhuanlan.zhihu.com/p/139726434)
 
 # 混淆
@@ -542,16 +802,56 @@ Java的序列化机制是通过在运行时判断类的serialVersionUID来验证
 **proguard 工作原理**
 
 - 移除没有用到的代码，然后对代码里面的类、变量、方法重命名为人可读性很差的简短名字。
-
 - Entry Point（入口点） :
   标识不会被处理的类和方法; 在压缩的步骤中，Proguard会从上述的Entry Point开始递归遍历，搜索哪些类和类的成员在使用，对于没有被使用的类和类的成员，就会在压缩段丢弃，在接下来的优化过程中，那些非Entry Point的类、方法都会被设置为private、static或final，不使用的参数会被移除，此外，有些方法会被标记为内联的，在混淆的步骤中，Proguard会对非Entry Point的类和方法进行重命名。
-  
+
+# Android各个版本
+
+## Andrroid6
+
+1. 运行时权限
+
+   此版本引入了一种新的权限模式，用户可直接在运行时管理应用权限。
+
+## Android 7
+
+1. 低电耗模式
+2. 系统权限的更改
+
+## Android8
+
+1. 通知渠道 — Notification Channels
+2. 画中画模式 — PIP
+
+## Android 9
+
+1. 利用wifi RTT 进行室内定位
+2. 显示屏缺口支持
+3. 前台服务
+
+如果应用以 Android 9 或更高版本为目标平台并使用前台服务，则必须请求 FOREGROUND_SERVICE 权限。这是普通权限，因此，系统会自动为请求权限的应用授予此权限。
+
+## Android 10
+
+1. 用户存储权限的变更
+2. 用户的定位权限的变更
+3. 设备唯一标识符的变更
+
+## Android 11
+
+1. 短信更新改进
+2. 电话号码相关权限
+3. 现在需要 APK 签名方案 v2
+
+[Android各版本新特性](https://blog.csdn.net/h_bpdwn/article/details/122344248)
 
 # ANR
 
 - ANR发生的原理是什么， 怎么排查
 
 APP发生卡顿，卡顿超过了阈值，就会报ANR
+
+[Android ANR 经验汇总一 —— ANR介绍](https://juejin.cn/post/7054093146631700488)
 
 ANR触发流程，可以比喻为埋炸弹和拆炸弹的过程，
  以启动Service为例，Service的onCreate方法调用之前会使用Handler发送延时10s的消息，Service 的onCreate方法执行完，会把这个延时消息移除掉。
@@ -579,7 +879,13 @@ ANR错误定位——如果开发机器上出现ANR问题时，系统会生成�
 
 $adb pull data/anr/traces.txt 
 
+**Traceview**
+
 Traceview - 系统性能分析工具，用于定位应用代码中的耗时操作
+
+**Systrace**
+
+应用性能数据采样和分析工具
 
 分析主线程堆栈、cpu、锁信息等
 
@@ -590,6 +896,23 @@ Traceview - 系统性能分析工具，用于定位应用代码中的耗时操�
 3. 获取这个锁被哪个线程持有（native层函数）
 4. 有了关系链，就可以找出造成死锁的线程
 
+互斥条件：一个资源每次只能被一个进程使用，即在一段时间内某 资源仅为一个进程所占有。此时若有其他进程请求该资源，则请求进程只能等待。
+
+请求与保持条件：进程已经保持了至少一个资源，但又提出了新的资源请求，而该资源 已被其他进程占有，此时请求进程被阻塞，但对自己已获得的资源保持不放。
+
+不可剥夺条件:进程所获得的资源在未使用完毕之前，不能被其他进程强行夺走，即只能 由获得该资源的进程自己来释放（只能是主动释放)。
+
+循环等待条件: 若干进程间形成首尾相接循环等待资源的关系
+
+
+
+解决：
+
+1. 避免多次锁定。尽量避免同一个线程对多个 Lock 进行锁定。例如上面的死锁程序，主线程要对 A、B 两个对象的 Lock 进行锁定，副线程也要对 A、B 两个对象的 Lock 进行锁定，这就埋下了导致死锁的隐患。
+2. 具有相同的加锁顺序。如果多个线程需要对多个 Lock 进行锁定，则应该保证它们以相同的顺序请求加锁。比如上面的死锁程序，主线程先对 A 对象的 Lock 加锁，再对 B 对象的 Lock 加锁；而副线程则先对 B 对象的 Lock 加锁，再对 A 对象的 Lock 加锁。这种加锁顺序很容易形成嵌套锁定，进而导致死锁。如果让主线程、副线程按照相同的顺序加锁，就可以避免这个问题。
+3. 使用定时锁。程序在调用 acquire() 方法加锁时可指定 timeout 参数，该参数指定超过 timeout 秒后会自动释放对 Lock 的锁定，这样就可以解开死锁了。
+4. 死锁检测。死锁检测是一种依靠算法机制来实现的死锁预防机制，它主要是针对那些不可能实现按序加锁，也不能使用定时锁的场景的。
+
 [给你一个Demo 你如何快速定位ANR](https://github.com/interviewandroid/AndroidInterView/blob/master/android/anr.md)
 
 [卡顿、ANR、死锁，线上如何监控](https://juejin.cn/post/6973564044351373326#heading-27)
@@ -598,7 +921,9 @@ Traceview - 系统性能分析工具，用于定位应用代码中的耗时操�
 
 [面试官又来了：你的app卡顿过吗？](https://juejin.cn/post/6844903949560971277)
 
-刷新原理：View 的 requestLayout 和 ViewRootImpl##setView 最终都会调用 ViewRootImpl 的 requestLayout 方法。然后通过 scheduleTraversals 方法提交绘制任务，然后再通过DisplayEventReceiver向底层请求vsync垂直同步信号，当vsync信号来的时候，通过JNI回调回来，再通过Handler往消息队列post一个异步任务，最终是ViewRootImpl去执行绘制任务，最后调用performTraversals方法，完成绘制。
+
+
+绘制原理：View 的 requestLayout 和 ViewRootImpl##setView 最终都会调用 ViewRootImpl 的 requestLayout 方法。然后通过 scheduleTraversals 方法提交绘制任务，然后再通过DisplayEventReceiver向底层请求vsync垂直同步信号，当vsync信号来的时候，通过JNI回调回来，再通过Handler往消息队列post一个异步任务，最终是ViewRootImpl去执行绘制任务，最后调用performTraversals方法，完成绘制。
 
 最终**performTraversals()**方法触发了View的绘制。该方法内部，依次调用了performMeasure(),performLayout(),performDraw(),将View的measure，layout，draw过程，从顶层View分发了下去。
 
@@ -614,6 +939,12 @@ Traceview - 系统性能分析工具，用于定位应用代码中的耗时操�
 
 [BlockCanary](https://link.juejin.cn/?target=https%3A%2F%2Fgithub.com%2Fmarkzhai%2FAndroidPerformanceMonitor)   ，Looper两次处理消息的时间差，比如大于3秒，就认为卡顿
 
+原理看下：
+
+1. 给Looper设置一个Printer
+2. 对比主线程处理消息的start和end时间
+3. 如果时间超过我们设置的阈值, 就认为是卡顿了,弹出提示并记录调用栈/CPU等等信息,用来分析
+
 **Looper.printer** 
 
 **字节码插桩**
@@ -622,7 +953,25 @@ Traceview - 系统性能分析工具，用于定位应用代码中的耗时操�
 
  真实操作中可以采用插桩的方式，给对应范围的方法起止位加入日志，并计算方法的执行耗时，后续统计出耗时排行，然后针对方法再进行优化。UI方面也可以采用一些工具来发现过度绘制，以及绘制耗时，然后再根据统计情况来优化UI绘制卡顿。 优化的方式也比较多，比如IO集中，加入缓存，降低联网频次，合并网络请求，自定义UI尽可能扁平。控制锁的使用，防止锁循环，过度锁争夺，死锁，必要的情况下可以采用CAS模式。
 
+Traceview
+
+它利用 Android Runtime 函数调用的 event 事件，将函数运行的耗时和调用关系写入 trace 文件中。
+
+systrace
+
+ 利用了 Linux 的ftrace调试工具，相当于在系统各个关键位置都添加了一些性能探针，也就是在代码里加了一些性能监控的埋点。Android 在 ftrace 的基础上封装了atrace，并增加了更多特有的探针，例如 Graphics、Activity Manager、Dalvik VM、System Server 等。
+
+卡顿的原因会有很多，比如函数非常耗时、I/O 非常慢、线程间的竞争或者锁等
+
 # 插件化
+
+插件化 hook 式的 hook 点 
+
+**ClassLoader 加载类原理：**
+
+> ClassLoader.loadClass -> DexPathList.loadClass -> 遍历dexElements数组 ->DexFile.loadClassBinaryName
+
+通俗点说就是：ClassLoader加载类的时候是通过遍历dex数组，从dex文件里面去加载一个类，加载成功就返回，加载失败则抛出Class Not Found 异常。
 
 
 
@@ -643,11 +992,23 @@ PathClassLoader：只能加载已经安装到Android系统中的apk文件（/dat
 
 DexClassLoader：可以加载任意目录下的dex/jar/apk/zip文件，比PathClassLoader更灵活，是实现热修复的重点。
 
+
+
 [Android 插件化和热修复知识梳理](https://blog.csdn.net/TOYOTA11/article/details/78660511)
+
+# 组件化
+
+- **基础组件**，不用多说，就是基础功能，例如网络请求、日志框架、图片加载，这些与业务毫无关联，可用于公司所有项目，是底层最稳定的组件。这里就比较容易识别和拆分。
+- **业务基础组件**，主要是供业务组件依赖使用，例如分享、支付组件，通常是一个完整的功能，是较为最稳定的组件。这部分通常也是比较容易识别的。
+- **业务组件**，完整的业务块，例如前面提到京东的 “首页”、“分类”、“发现”、“购物车”、“我的”。业务组件是日常需求开发的主战场。
+
+[全面掌握Android组件化，年后去虐面试官！](https://zhuanlan.zhihu.com/p/347241434)
 
 # 崩溃收集
 
 - 怎防止程序崩溃，如果已经到了Thread.UncaughtExceptionHandler是否可以让程序继续运行。
+
+**为什么出现异常了，程序会停止运行呢**
 
 了解下Android 的异常处理机制，在我们未设置Thread.UncaughtExceptionHandler之前，系统会默认设置一个。ZygoteInit.zygoteInit()，调用了` Process.killProcess(Process.myPid()); System.exit(10);`,触发了进程结束逻辑，也就导致了程序停止运行。
 
@@ -655,7 +1016,7 @@ DexClassLoader：可以加载任意目录下的dex/jar/apk/zip文件，比PathCl
 
 对于子线程的异常，可以通过`Thread.setDefaultUncaughtExceptionHandler`来拦截，并且子线程的停止不会给用户带来感知。
 
-3. 对于在生命周期内发生的异常，可以通过替换`ActivityThread.mH.mCallback`的方法来捕获，并且通过`token`来结束Activity或者直接杀死进程。但是这种办法要适配不同SDK版本的源码才行，所以慎用，需要的可以看文末Cockroach库源码。
+3. 对于在生命周期内发生的异常，可以通过替换`ActivityThread.mH.mCallback`的方法来捕获， 死进程。但是这种办法要适配不同SDK版本的源码才行，所以慎用，需要的可以看文末Cockroach库源码。
 
 Native Crash捕获
 
@@ -666,6 +1027,10 @@ Native Crash捕获
 函数运行在用户态，当遇到系统调用、中断或是异常的情况时，程序会进入内核态。信号涉及到了这两种状态之间的转换
 
 ![image-20211029152427895](../../../../Library/Application Support/typora-user-images/image-20211029152427895.png)
+
+- 注册信号处理函数
+
+  就是要用信号处理函数捕获到native crash
 
 - 设置额外栈空间
 
@@ -690,6 +1055,8 @@ Native Crash捕获
 [App怎么做才能永不崩溃](https://juejin.cn/post/6925702262102687758)
 
 [监控Java层和JNI Native层Crash](https://www.jianshu.com/p/4278915847b6)
+
+[Android 平台 Native 代码的崩溃捕获机制及实现](https://mp.weixin.qq.com/s/g-WzYF3wWAljok1XjPoo7w)
 
 # 启动流程
 
@@ -749,15 +1116,23 @@ Binder里有很多线程在跑。fork会把进程里面当前线程复制过去�
 
 [关于Android日志监控设计的一些想法](https://xybean.github.io/2019/05/04/%E5%85%B3%E4%BA%8EAndroid%E6%97%A5%E5%BF%97%E7%9B%91%E6%8E%A7%E8%AE%BE%E8%AE%A1%E7%9A%84%E4%B8%80%E4%BA%9B%E6%83%B3%E6%B3%95/)
 
+[面试题 | 怎么写一个又好又快的日志库？（一](https://juejin.cn/post/7074734658277081102)
+
 
 
 **参考面试题**
+
+
+
+[android多线程下载解析,详解Android中的多线程断点下载](https://blog.csdn.net/weixin_42109925/article/details/117317119?spm=1001.2101.3001.6661.1&utm_medium=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-117317119-blog-53126087.pc_relevant_multi_platform_whitelistv2&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-117317119-blog-53126087.pc_relevant_multi_platform_whitelistv2&utm_relevant_index=1)
 
 [2020 最新 - 今日头条 Android 面试题及答案 (已拿到 offer)](https://www.jianshu.com/p/5e5908ab3ea9)
 
 [我的杭州面试之旅](https://posts.careerengine.us/p/5e9f8187f4141f0e0f365f3e)
 
+[Android面经，历时一个半月，斩获大厂offer](https://juejin.cn/post/7120896365840269348)
 
+[太强了，这居然是19年双非本科开发一年的Android面经总结！开发几年的老程序员自叹](https://www.bilibili.com/read/cv7966634/)
 
 
 

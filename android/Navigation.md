@@ -4,6 +4,8 @@
 
 [Jetpack Navigation Fragmen间数据传递](https://juejin.cn/post/6923809888493961229)
 
+[ViewPager2使用和探究](https://blog.csdn.net/weixin_41607932/article/details/124203258)
+
 
 
 

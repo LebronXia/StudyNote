@@ -42,8 +42,6 @@ public final void clear() {
     }
 ```
 
-
-
 viewModelScope 第一次被调用时，会调用 setTagIfAbsent(JOB_KEY，CloseableCoroutineScope) 进行缓存。
 看下 CloseableCoroutineScope 类，实现了 Closeable 接口，并且在 close() 中进行了协程作用域 coroutineContext 对象的取消操作。
 
@@ -133,7 +131,7 @@ edPacketVm.grabRedPacketLiveData.observe(this, Observer {
       //LifecycleBoundObserver 是 ObserverWrapper 的子类或者实现类
         ObserverWrapper existing = mObservers.putIfAbsent(observer, wrapper);
       // 则抛出异常，不可以添加同一个 Observer 到两个不同的生命周期对象。
-        if (existing != null && !existing.isAttachedTo(owner)) {
+        if (existing != null && !existing.isAttachedTo(owner)) {、、、、、、、、
             throw new IllegalArgumentException("Cannot add the same observer"
                     + " with different lifecycles");
         }
@@ -648,12 +646,32 @@ class FullLifecycleObserverAdapter implements LifecycleEventObserver {
 
 OkhttpIncepter ResponedBody content_length
 
+图片开源框架的比较
+
+
+
 ## **Glide优势**
 
 1. 多种图片格式的缓存，适用于更多的内容表现形式（如Gif、WebP、缩略图、Video）
 2. 生命周期集成（根据Activity或者Fragment的生命周期管理图片加载请求）
 3. 高效处理Bitmap（bitmap的复用和主动回收，减少系统回收压力）
 4. 高效的缓存策略，灵活（Picasso只会缓存原始尺寸的图片，Glide缓存的是多种规格），加载速度快且内存开销小（默认Bitmap格式的不同，使得内存开销是Picasso的一半）
+
+**Fresco：**
+
+- 最大的优势在于5.0以下(最低2.3)的bitmap加载。在5.0以下系统，Fresco将图片放到一个特别的内存区域(Ashmem区)
+- 大大减少OOM（在更底层的Native层对OOM进行处理，图片将不再占用App的内存）
+- 适用于需要高性能加载大量图片的场景
+- **丰富的图片处理：**缩放、圆角、透明、高斯模糊等处理
+- 支持图片从模糊到清晰的渐进式加载
+
+**Picasso**
+
+- 图片质量高ARGB_8888，体积小可以配合OKhttp使用
+- 自带统计监控，比如说缓存命中率，内存使用大小，节省的流量等
+- picasso没有自定义本地缓存的接口，而是默认使用http的本地缓存
+- 支持优先级处理
+- 支持飞行模式，并发线程数根据网络类型变化
 
 ## **Key的生成**
 这个id会结合signature、width、height等等10个参数一起传入到EngineKeyFactory的buildKey()方法当中，从而构建出了一个EngineKey对象，这个EngineKey也就是Glide中的缓存Key了。
@@ -687,6 +705,9 @@ Glide的图片加载过程中会调用两个方法来获取内存缓存，loadFr
 
 在Activity/fragment 销毁的时候，取消图片加载任务
 
+ Glide 管理生命周期的整体流程就是先创建一个无视图的 Fragment，并同时创建这个 Fragment 的 ActivityFragmentLifeCycle 对象，当这个 Framgent 的生命周期发生变化时会调用 ActivityFragmentLifeCycle 使其中的 RequestManager 做出对应处理，由 RequestTracker 具体实现。
+
+
 这其中采用的监控方法就是在当前activity中添加一个没有view的fragment，这样在activity发生onStart onStop onDestroy的时候，会触发此fragment的onStart onStop onDestroy。
 
 ```java
@@ -707,17 +728,14 @@ public void onDestroy() {
 
 ## **设计图片加载框架**
 
-1. 异步加载：最少两个线程池
-
+1. 异步加载：（最少两个）线程池
 2. 切换到主线程：Handler
-
 3. 缓存：LruCache、DiskLruCache，涉及到LinkHashMap原理
-
 4. 防止OOM：软引用、LruCache、图片压缩没展开讲、Bitmap像素存储位置源码分析、Fresco部分源码分析
-
 5. 内存泄露：注意ImageView的正确引用，生命周期管理
-
 6. 列表滑动加载的问题：加载错乱用tag、队满任务存在则不添加
+
+Android 8.0 之后Bitmap像素内存放在native堆，到了Android3.0之后，Bitmap的内存则已经全部分配在VM堆上，这两种分配方式的区别在于，Native堆的内存不受Dalvik虚拟机的管理，我们想要释放Bitmap的内存，必须手动调用Recycle方法。
 
 [Android图片加载框架最全解析（七），实现带进度的Glide图片加载功能](https://blog.csdn.net/guolin_blog/article/details/78357251)
 
@@ -760,6 +778,53 @@ public void onDestroy() {
 
 同时通过对`StreamAllocation`的引用计数实现自动回收。
 
+**复用TCP连接**
+
+1. 首先会尝试使用 已给请求分配的连接。（已分配连接的情况例如重定向时的再次请求，说明上次已经有了连接）
+
+2. 若没有 已分配的可用连接，就尝试从连接池中 匹配获取。因为此时没有路由信息，所以匹配条件：`address`一致——`host`、`port`、代理等一致，且匹配的连接可以接受新的请求。
+
+3. 若从连接池没有获取到，则传入`routes`再次尝试获取，这主要是针对`Http2.0`的一个操作,`Http2.0`可以复用`square.com`与`square.ca`的连接
+
+4. 若第二次也没有获取到，就创建`RealConnection`实例，进行`TCP + TLS`握手，与服务端建立连接。
+
+5. 此时为了确保`Http2.0`连接的多路复用性，会第三次从连接池匹配。因为新建立的连接的握手过程是非线程安全的，所以此时可能连接池新存入了相同的连接。
+
+6. 第三次若匹配到，就使用已有连接，释放刚刚新建的连接；若未匹配到，则把新连接存入连接池并返回。
+
+
+
+
+
+通过 *CacheControl* 设置了缓存条件后，后被添加在Header的头部，字段为 *Cache-Control*
+
+Okhttp中通过 CacheStrategy 来设置缓存策略，缓存拦截器中缓存黁策略的生成与Request和缓存的Response有关。
+
+```kotlin
+class CacheStrategy internal constructor(
+  // null表示禁止使用网络
+  val networkRequest: Request?,
+  // null表示禁止使用缓存
+  val cacheResponse: Response?
+) 
+
+```
+
+**缓存策略的因素有**
+
+1. Request中HTTP和缓存条件。
+2. 缓存Response中code和headers中的头部字段：Date、Expires、Last-Modified、ETag、Age。
+
+**Okhttp缓存怎么处理**
+
+通过request去获取缓存，内部通过request的url来获取缓存。
+根据time、request、response来设置缓存策略。
+如是禁止网络请求且缓存为null，创建一个code=504的response返回。
+如果是禁止网络缓存但缓存不为null，则直接使用缓存并返回。
+调用下一拦截器，获取响应。
+如果缓存不为null且网络请求的响应返回的code=304，则使用缓存（有缓存的话客户端会发一个条件性的请求，由服务端告诉是否使用缓存），如果不是304,说明服务端资源有更新，将网络数据和缓存传入
+最后使用请求返回的respone，并存储response（前提是设置了缓存）
+
 **断点续传**
 
 step 1：判断检查本地是否有下载文件，若存在，则获取已下载的文件大小 downloadLength，若不存在，那么本地已下载文件的长度为 0
@@ -784,11 +849,39 @@ addNetworkInterceptor（网络拦截器）：
 3，只观察在网络上传输的数据.
 4，携带请求来访问连接.
 
+[面试官：Okhttp中缓存和缓存策略如何设置？DiskLruCache中是如何实现缓存的？](https://blog.csdn.net/Androiddddd/article/details/112253807)
+
+[OkHttp 原理 8 连问](https://juejin.cn/post/7020027832977850381#heading-5)
+
 [谈谈OKHttp的几道面试题](https://www.jianshu.com/p/7cb9300c6d71)
 
 [android 快速请求取消,Android OkHttp + Retrofit 取消请求的方法](https://blog.csdn.net/weixin_35439783/article/details/117777344)
 
 [Android Okhttp 断点续传面试解析](https://juejin.cn/post/6844903854115389447)
+
+[Okhttp页面结束同时终结该页面的请求，防止内存泄漏及报错](https://blog.csdn.net/xlyhr007/article/details/59507565?spm=1001.2101.3001.6650.14&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-14.pc_relevant_paycolumn_v3&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7ERate-14.pc_relevant_paycolumn_v3&utm_relevant_index=16)
+
+# Retrofit
+
+- 如何完成线程切换
+
+ExecutorCalback完成，里面是由handler切换
+
+
+
+原理：
+
+其内部通过动态代理模式生成接口的实体对象，并且在InvocationHandler中统一处理请求方法，通过解读方法的注解来获得接口中配置的网络请求信息，并将网络请求信息和请求参数一起封装成一个OkHttpCall对象，这个OkHttpCall对象内部通过OkHttp提供的Api来处理网络请求，Retrofit还提供了配置数据格式转换的API，可以针对不同的数据类型进行处理
+
+动态代理原理：动态代理的原理主要是在运行时动态生成代理类，然后根据代理类生成一个代理对象，在这个代理对象的方法中中又会调用InvocationHandler的invoke来转发对方法的处理
+
+动态静态区别：
+
+在代码运行期间，运用反射机制动态创建生成。动态代理代理的是一个接口 下的多个实现类
+
+由程序员创建或是由特定工具生成，在代码编译时就确定了被代理的类是哪 一个是静态代理。静态代理通常只代理一个类;
+
+[ndroid Retrofit源码解析：都能看懂的Retrofit使用详解](https://zhuanlan.zhihu.com/p/421401880)
 
 # LeakCanary
 
@@ -951,9 +1044,41 @@ private static void loadRouterMap() {
 
 [ARouter原理与缺陷解析](https://shenzhen2017.github.io/blog/2021/03/aruter-good-bad.html)
 
+# EventBus
+
+EventBus 是一款用在 Android 开发中的发布/订阅事件总线框架，基于观察者模式
+
+EventBus支持的四种线程模式
+
+- ThreadMode.POSTING，默认的线程模式，在那个线程发送事件就在对应线程处理事件，避免了线程切换，效率高
+
+- ThreadMode.MAIN，如在主线程（UI线程）发送事件，则直接在主线程处理事件；如果在子线程发送事件，则先将事件入队列，然后通过 Handler 切换到主线程，依次处理事件。
+
+- ThreadMode.BACKGROUND，如果在主线程发送事件，则先将事件入队列，然后通过线程池依次处理事件；如果在子线程发送事件，则直接在发送事件的线程处理事件。
+
+- ThreadMode.ASYNC，无论在那个线程发送事件，都将事件入队列，然后通过线程池处理
 
 
 
+1. 构造方法: 创建构造方法: 通过双重锁的模式创建对象 ;  通过建造者模式创建对象
+ 2. 注册:这个subscriber就是我们使用EventBus.getDefault().register(this);传入的这个this，比如MainActivity.this。通过反射，查找该Subscriber中，通过@Subscribe注解的方法（消费方法）信息，将这些方法信息封装到SubscriberMethod中，封装的内容包括Method对象、ThreadMode、事件类型、优先级、是否粘性等
+ 3. 发布与消费事件:  post进行发布 .然后到线程的队列中,然后进行消费事件,消费的时候通过反射和method 调用,这是回到queue队列当中,循环遍历queue中的event 查找可以消费该事件的类和方法,最终他会将事件交给这个类和方法,完成整个消息的发布与消费;
 
+[Android面试之EventBus原理分析](https://zhuanlan.zhihu.com/p/77809630?utm_source=wechat_session)
 
+## MMKV
+
+MMKV 是基于 mmap [内存](https://so.csdn.net/so/search?q=内存&spm=1001.2101.3001.7020)映射的 key-value 组件
+
+内存准备
+通过 mmap 内存映射文件，提供一段可供随时写入的内存块，App 只管往里面写数据，由操作系统负责将内存回写到文件，不必担心
+crash 导致数据丢失。
+数据组织
+数据序列化方面我们选用 protobuf 协议，pb 在性能和空间占用上都有不错的表现。
+写入优化
+考虑到主要使用场景是频繁地进行写入更新，我们需要有增量更新的能力。我们考虑将增量 kv 对象序列化后，append 到内存末尾。
+空间增长
+使用 append 实现增量更新带来了一个新的问题，就是不断 append 的话，文件大小会增长得不可控。我们需要在性能和空间上做个折中。
+其中对于Android系统，增加了文件锁来保证多进程的调用。
+[mmkv 原理解析](https://blog.csdn.net/number_cmd9/article/details/120624516)
 

@@ -1,3 +1,10 @@
+# Kotlin
+
+- kotlin扩展函数底层原理
+- Kotlin inner 关键字
+
+其实 Kotlin 的扩展函数并没有修改原有的 String 类，而是在自己的类中生成了一个静态的方法,当我们在 Kotlin 中调用扩展函数时,编译器将会调用自动生成的函数并且把当前的对象（String）传入。
+
 # 委托
 
 - by lazy是如何实现延迟加载的
@@ -41,3 +48,34 @@ private class SynchronizedLazyImpl<out T>(initializer: () -> T, lock: Any? = nul
 [by lazy是如何实现延迟加载的](https://www.jianshu.com/p/68962ad7986f)
 
 [委托模式（Delegate）和委托属性（Delegate Properties）](https://www.jianshu.com/p/f54ff17425b2)
+
+# 协变和逆变
+
+
+
+### 协变应用
+
+- 在 Java 中用通配符 `? extends` 表示协变
+- 在 Kotlin 中关键字 `out` 表示协变
+
+### 逆变应用
+
+- 在 Java 中使用通配符 `? super` 表示逆变
+- 在 Kotlin 中使用关键字 `in` 表示逆变
+
+# 协程
+
+作用域
+
+线程和协程的区别
+
+# Flow
+
+flowOnLifecycle
+
+[Kotlin协程之Flow使用](https://juejin.cn/post/7034381227025465375#heading-1) Flow的操作符介绍
+
+[官方推荐 Flow 取代 LiveData,有必要吗？](https://juejin.cn/post/6986265488275800072)
+
+
+
