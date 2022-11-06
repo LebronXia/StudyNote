@@ -1,8 +1,30 @@
-字节码 
+## 字节码 
 
 
 
-classLoader加载
+## classLoader加载
+
+
+
+## ASM用法
+
+核心类：
+
+ClassReader:
+
+ClassWriter:
+
+ClassVisitor:
+
+AdviceAdapter:
+
+
+
+
+
+
+
+
 
 
 
@@ -17,6 +39,10 @@ classLoader加载
 
 
 参考：
+
+
+
+[字节码增强技术探索](https://tech.meituan.com/2019/09/05/java-bytecode-enhancement.html)
 
 [ASM在隐私合规扫描中的应用实战](https://mp.weixin.qq.com/s/0G-tLKaMPD_XA6j1cnqh0g)
 

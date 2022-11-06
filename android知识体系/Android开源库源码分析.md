@@ -813,7 +813,7 @@ class CacheStrategy internal constructor(
 **缓存策略的因素有**
 
 1. Request中HTTP和缓存条件。
-2. 缓存Response中code和headers中的头部字段：Date、Expires、Last-Modified、ETag、Age。
+2. 缓存Response中cod e和headers中的头部字段：Date、Expires、Last-Modified、ETag、Age。
 
 **Okhttp缓存怎么处理**
 
