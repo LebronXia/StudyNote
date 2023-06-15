@@ -147,3 +147,6 @@ NativePollOnce 场景
 [Android修炼系列（32），你理解的 ANR 监控可能一直是错的](https://juejin.cn/post/7077710481837785096)
 
 [关于闲鱼的ANR治理，我有几条心得...](https://juejin.cn/post/6992831566627995685#heading-7)
+
+[Android线上卡顿监控，提升APP稳定性](https://mp.weixin.qq.com/s/2JCbHdxYMlvQ3ykSiHtG_A)
+
