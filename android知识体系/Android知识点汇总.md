@@ -378,6 +378,8 @@ MMAP:Linux通过将一个虚拟内存区域与一个磁盘上对象关联起来�
 
 MMAP作用让一块虚拟内存指向已知的一块物理内存，（物理内存是binder提供的）
 
+这样在Binder通信机制中，binder_mmap()会将Server进程的虚拟地址和内核虚拟地址映射到同一个物理页面。那么当Client进程向Server进程发送请求时，只需要将Client的数据拷贝到内核空间即可！由于Server进程的地址和内核空间映射到同一个物理页面，因此，Client中的数据拷贝到内核空间时，也就相当于拷贝到了Server进程中。因此，Binder通信机制中，数据传输时，只需要1次内存拷贝！这就是Binder通信原理的精髓所在！
+
 
 
 **四大组件底层通信如何实现**
@@ -387,11 +389,11 @@ MMAP作用让一块虚拟内存指向已知的一块物理内存，（物理内�
 bindService: 
 
 1. 客户端进程与ServiceManager通信获得AMS的iBinder
-2. 客户端通过AMS的Binder与AMS通信，请求biindService
+2. 客户端通过AMS的Binder与AMS通信，请求bindService
 3. AMS与服务端进程通信执行Service的onBind
 4. 服务端进程与ServiceManager通信获得AMS的IBinder
 5. 服务端进程通过AMS的IBinder与AMS通信，发布自己的Binder给AMS
-6. AMS与客户端通信，转发服务端的IBiinder(代理BinderProxy)
+6. AMS与客户端通信，转发服务端的IBinder(代理BinderProxy)
 
 **intent不能传递大数据**
 
@@ -400,6 +402,8 @@ bindService:
 [为什么 Android 要采用 Binder 作为 IPC 机制](https://www.zhihu.com/question/39440766/answer/89210950)
 
 [Carson带你学Android：图文详解Binder跨进程通信原理](https://www.jianshu.com/p/4ee3fd07da14)
+
+[Android Binder通信一次拷贝你真的理解了吗？](https://code84.com/157851.html)
 
 # 事件分发
 
@@ -587,7 +591,7 @@ draw()
 
 [Android View绘制13问13答](https://www.cnblogs.com/punkisnotdead/p/5181821.html)
 
-[面试官问你：自定义View跟绘制流程懂吗？帮你搞定面试官](https://blog.csdn.net/c10wtiybq1ye3/article/details/103415297)
+[面试官问你：自定义View跟绘制流程懂吗？帮你搞定面试官](https://juejin.cn/post/6844904005945016328)
 
 [Android图形系统（四）应用篇：自定义View/ViewGroup详解](https://juejin.cn/post/7140332948485570596)
 
@@ -664,7 +668,7 @@ RecyclerView.ViewHolder viewHolder = mRecyclerView.findViewHolderForAdapterPosit
 
 [让你彻底长我RecyclerView的缓存机制](http://www.360doc.com/content/19/0712/11/36367108_848240455.shtml)
 
-[阿里3轮面试都问了RecyclerView](https://blog.csdn.net/weixin_44339238/article/details/108654771)
+[阿里3轮面试都问了RecyclerView](https://www.zhihu.com/tardis/zm/art/457038322?source_id=1003)
 
 [再也不用担心面试问RecyclerView了](https://www.jianshu.com/p/443d741c7e3e)
 

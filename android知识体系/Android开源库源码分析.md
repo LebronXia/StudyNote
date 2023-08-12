@@ -73,7 +73,7 @@ internal class CloseableCoroutineScope(context: CoroutineContext) : Closeable, C
 }
 ```
 
-
+而onRetainNonConfigurationInstance() 数据是存储到ActivityClientRecord中，也就是存到应用本身的进程中了。
 
 [Jetpack ： ViewModel 必知的几个问题](https://blog.csdn.net/u012885461/article/details/118073987)
 
@@ -333,6 +333,8 @@ private void considerNotify(ObserverWrapper observer) {
 [Android 面试总结 - LiveData(二)](https://juejin.cn/post/6991497263457501221)
 
 [**重学安卓：LiveData 数据倒灌 背景缘由全貌 独家解析**](https://xiaozhuanlan.com/topic/6719328450)
+
+[关于LiveData粘性事件所带来问题的解决方案](https://caoyangim.github.io/2020/12/19/LiveData%E5%90%8E%E7%BB%AD/)
 
 # LifeCycle
 
@@ -864,6 +866,13 @@ addNetworkInterceptor（网络拦截器）：
 # Retrofit
 
 - 如何完成线程切换
+- 什么是动态代理？
+- 整个请求的流程是怎样的？
+- 底层是如何用 OkHttp 请求的？
+- 方法上的注解是什么时候解析的，怎么解析的？
+- Converter 的转换过程，怎么通过 Gson 转成对应的数据模型的？
+- CallAdapter 的替换过程，怎么转成 RxJava 进行操作的？
+- 如何支持 Kotlin 协程的 suspend 挂起函数的？
 
 ExecutorCalback完成，里面是由handler切换
 
@@ -881,7 +890,7 @@ ExecutorCalback完成，里面是由handler切换
 
 由程序员创建或是由特定工具生成，在代码编译时就确定了被代理的类是哪 一个是静态代理。静态代理通常只代理一个类;
 
-[ndroid Retrofit源码解析：都能看懂的Retrofit使用详解](https://zhuanlan.zhihu.com/p/421401880)
+[ndroid Retrofit源码解析：都能看懂的Retrofit使用详解](https://juejin.cn/post/6869584323079569415)
 
 # LeakCanary
 
@@ -895,13 +904,19 @@ ExecutorCalback完成，里面是由handler切换
 
 在确定内存泄露的对象后，就需要其他手段来确定泄露对象引用链了，这一过程开始于checkRetainedObjects方法，跟踪调用可以看到启动了前台服务HeapAnalyzerService，这在我们使用LeakCanary时可以在通知栏看到。服务中调用了HeapAnalyzer的analyze方法进行堆内存分析，由Shark库实现该功能，就不再进行追踪。
 
-官方的原理简单来解释就是这样的：**在一个Activity执行完onDestroy()之后，将它放入WeakReference中，然后将这个WeakReference类型的Activity对象与ReferenceQueque关联。这时再从ReferenceQueque中查看是否有没有该对象，如果没有，执行gc，再次查看，还是没有的话则判断发生内存泄露了。最后用HAHA这个开源库去分析dump之后的heap内存。**
+官方的原理简单来解释就是这样的：**在一个Activity执行完onDestroy()之后，将它放入WeakReference中，然后将这个WeakReference类型的Activity对象与ReferenceQueque关联。这时再从ReferenceQueque中查看是否有没有该对象，如果没有，执行gc，再次查看，还是没有的话则判断发生内存泄露了。最后用HAHA这个开源库去分析dump之后的heap内存。*
+
+leakcanary 2.0
+
+如果一个obj对象，它和队列queue进行弱引用关联，在进行垃圾收集时，发现该对象具有弱引用，会把引用加入到引用队列中，我们如果在该队列中拿到引用，则说明该对象被回收了，**如果拿不到，则说明该对象还有强/软引用未释放，那么就说明对象还未回收，发生内存泄漏了，然后dump内存快照，使用第三方库进行引用链分**
 
 [LeakCanary检测内存泄漏原理](http://www.androidchina.net/11559.html)
 
 [WeakReference应用-LeakCanary检测内存泄漏](https://blog.csdn.net/inwhites/article/details/93141379)
 
 [看完这篇 LeakCanary 原理分析，又可以虐面试官了](https://zhuanlan.zhihu.com/p/73675401)
+
+[LeakCanary源码及ContentProvider优化](https://zhuanlan.zhihu.com/p/458245508)
 
 # Arouter
 
@@ -1042,7 +1057,9 @@ private static void loadRouterMap() {
 
 默认通过扫描`dex`的方式进行加载,通过`gradle`插件进行自动注册可以缩短初始化时间,同时解决应用加固导致无法直接访问`dex`文件，初始化失败的问题
 
-[ARouter原理与缺陷解析](https://shenzhen2017.github.io/blog/2021/03/aruter-good-bad.html)
+[ARouter原理与缺陷解析](https://www.imgeek.net/article/825354453l)
+
+[“终于懂了” 系列：组件化框架 ARouter 完全解析（一） 原理详解](https://juejin.cn/post/7123933530156974088)
 
 # EventBus
 
