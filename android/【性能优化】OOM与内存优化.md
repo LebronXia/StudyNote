@@ -16,10 +16,13 @@ Glide.with(this).load(R.mipmap.vehicle_1).into(imageView);
 
 
 
-
 [Memory Analyzer基本使用](https://blog.csdn.net/OldApple_MrZ/article/details/102647599)
 
 [图片系列（6）不同版本上 Bitmap 内存分配与回收原理对比](https://blog.csdn.net/pengxurui/article/details/126326790)
 
 [云音乐 Android 内存监控探索篇](https://juejin.cn/post/7197032258888646693#heading-2)
+
+[抖音 Android 性能优化系列: Java 内存优化篇](https://juejin.cn/post/6908517174667804680)
+
+[大厂OOM优化和监控方案](https://juejin.cn/post/7074762489736478757?searchId=20240227181234934EFF6251956BFD605A#heading-31)
 

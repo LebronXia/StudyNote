@@ -67,6 +67,7 @@ LinkBlockingQueue
 # Jvm管理
 
 - 对象被设为null会被回收吗
+- 垃圾回收机制
 
 一个对象的引用执行null，并不会被立即回收的，还需要执行`finalize()`方法
 
@@ -81,15 +82,17 @@ LinkBlockingQueue
 
  执行 a = a++ 操作，原先已经执行了 a++ 操作，这个时候将 a++ 中 a 赋值给 int a ，所以会将栈中的数据赋值到 局部变量表中，所以这个时候局部变量表中的数据就是88了
 
-
-
 JVMTI OOM监控
+
+直接内存：它避免了Java堆和Native堆来回交换数据的时
 
 [JVM那点事-对象的自救计划（对象被设为null会被回收吗？）](https://www.jianshu.com/p/0618241f9f44)
 
 [JVM内存结构——运行时数据区](https://www.cnblogs.com/zhengbin/p/5617023.html)
 
 [【死磕JVM】一道面试题引发的“栈帧”！！！](https://www.cnblogs.com/mingyueyy/p/14538754.html)
+
+[Java虚拟机（JVM）面试题](https://juejin.cn/post/6844904125696573448?searchId=2023081311435315EC3968E2B93A344149)
 
 ![image-20220423111925307](../assets/Java知识点汇总/image-20220423111925307.png)
 
@@ -98,9 +101,7 @@ JVMTI OOM监控
 - Java 集合，介绍下ArrayList 和 HashMap 的使用场景，底层实现原理
 - ArrayList 与 LinkedList 的区别
 - ArrayList、HashMa和LinkedList的默认空间是多少？扩容机制是什么
-- `HashMap、HashTable、TreeMap`原理
-
-
+- Hashmap、hashtable/TreeMap原理
 
 **ArrayList、HashMa和LinkedList的默认空间是多少？扩容机制是什么**
 
@@ -147,7 +148,7 @@ p = tab[i = (n - 1) & hash]
 
 [吊打面试官》系列-ConcurrentHashMap & Hashtable](https://juejin.cn/post/6844904023003250701)
 
-[hash的问题](https://www.jianshu.com/p/45fa4e80b631)
+[HashMap底层实现原理/HashMap与HashTable区别/HashMap与HashSet区别](https://www.jianshu.com/p/45fa4e80b631)
 
 TreeMap的实现是红黑树算法的实现
 
@@ -162,7 +163,7 @@ ArrayMap
 
 [ArrayMap原理解析](https://blog.csdn.net/qq_31481093/article/details/116110304)
 
-# Serializable和Parcelable
+# 序列化
 
 - 序列化Serializable和Parcelable的理解和区别
 - 如果持久化需要用哪一个
@@ -269,6 +270,8 @@ ThreadPoolExecutor.CallerRunsPolicy：由调用线程处理该任务
 
 无任务执行时，线程池其实是利用阻塞队列的take方法挂起，从而维持核心线程的存活
 
+核心线程通常情况下不会被销毁，只有在以下几种情况下会被销毁： 1. 当线程池调用shutdown()或shutdownNow()方法时，核心线程会被销毁。 2. 当线程池设置allowCoreThreadTimeOut(boolean value)方法的参数为true，并且设置了线程空闲时间，那么空闲时间超过设置的时间，核心线程也会被销毁。 3. 当线程所在的进程结束时，核心线程也会被销毁。 4. 手动调用线程的interrupt方法，也可以销毁线程。但这种方式并不推荐，因为可能会导致线程不安全问题。 5. 核心线程在执行任务时出现未捕获的异常，也可能导致线程被销毁。
+
 CPU密集型：核心线程数 = CPU核数 + 1
 IO密集型：核心线程数 = CPU核数 * 2
 
@@ -282,9 +285,17 @@ IO密集型：核心线程数 = CPU核数 * 2
 
 [基础篇：高并发一瞥，线程和线程池的总结](https://juejin.cn/post/6854573219341402119#heading-2)
 
+[java线程池](https://blog.csdn.net/sjzwangxufeng/article/details/129415572)
+
 # 类加载
 
-其中系统类加载器包括3种，分别是Bootstrap ClassLoader、 Extensions ClassLoader和 App ClassLoader。
+其中系统类加载器包括3种，分别是
+
+Bootstrap ClassLoader(启动加载器)、 
+
+Extensions ClassLoade(扩展加载器)r和 
+
+App ClassLoader(应用加载器)。
 
 类加载机制，加载过程 ？
 

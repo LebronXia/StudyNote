@@ -925,8 +925,6 @@ Traceview - 系统性能分析工具，用于定位应用代码中的耗时操�
 
 [面试官又来了：你的app卡顿过吗？](https://juejin.cn/post/6844903949560971277)
 
-
-
 绘制原理：View 的 requestLayout 和 ViewRootImpl##setView 最终都会调用 ViewRootImpl 的 requestLayout 方法。然后通过 scheduleTraversals 方法提交绘制任务，然后再通过DisplayEventReceiver向底层请求vsync垂直同步信号，当vsync信号来的时候，通过JNI回调回来，再通过Handler往消息队列post一个异步任务，最终是ViewRootImpl去执行绘制任务，最后调用performTraversals方法，完成绘制。
 
 最终**performTraversals()**方法触发了View的绘制。该方法内部，依次调用了performMeasure(),performLayout(),performDraw(),将View的measure，layout，draw过程，从顶层View分发了下去。
