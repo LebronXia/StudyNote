@@ -98,6 +98,7 @@ JVMTI OOM监控
 - Java 集合，介绍下ArrayList 和 HashMap 的使用场景，底层实现原理
 - ArrayList 与 LinkedList 的区别
 - ArrayList、HashMa和LinkedList的默认空间是多少？扩容机制是什么
+- `HashMap、HashTable、TreeMap`原理
 
 
 
