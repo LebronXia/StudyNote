@@ -37,14 +37,48 @@ webview优化
 
    
 
+   5. 离线包方案
+   
+      1. ##### **源预加载与存储**
+   
+      2. #####  **版本控制与更新**
+   
+      3. ##### **WebView请求拦截**
+   
+         1. ```
+            webView.webViewClient = object : WebViewClient() {  
+                override fun shouldInterceptRequest(  
+                    view: WebView?,  
+                    request: WebResourceRequest?  
+                ): WebResourceResponse? {  
+                    val url = request?.url?.toString() ?: return null  
+                    // 匹配本地资源路径  
+                    val localPath = getLocalPath(url)  
+                    return if (File(localPath).exists()) {  
+                        // 返回本地资源流  
+                        val mimeType = getMimeType(url)  
+                        WebResourceResponse(mimeType, "UTF-8", FileInputStream(localPath))  
+                    } else {  
+                        super.shouldInterceptRequest(view, request)  
+                    }  
+                }  
+            }  
+            ```
+   
+         2. 
+   
+      4. ##### **异常处理与降级**
+   
+   
+   
    [Carson带你学Android：手把手构建WebView缓存机制及资源预加载方案](https://www.jianshu.com/p/5e7075f4875f)
     [WebView性能、体验分析与优化](https://tech.meituan.com/2017/06/09/webviewperf.html)
-
-   [WebView优化提升H5加载速度方案](https://blog.csdn.net/ljphhj/article/details/103870628)
-
-   [Android WebView最佳优化（WebView池）](https://blog.csdn.net/u011082160/article/details/118245494)
-
    
-
+   [WebView优化提升H5加载速度方案](https://blog.csdn.net/ljphhj/article/details/103870628)
+   
+   [Android WebView最佳优化（WebView池）](https://blog.csdn.net/u011082160/article/details/118245494)
+   
+   
+   
    
 

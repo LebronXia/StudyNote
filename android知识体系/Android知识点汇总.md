@@ -30,8 +30,13 @@ WMS 在 addWindow 时，会根据当前 Window 对象的 Token 进行校验
 - Service启动方式以及如何停止
 - [startService 和 bingService区别](https://link.juejin.cn/?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Fd870f99b675c) 
 - 广播的使用场景，原理
+- Intent可以携带哪些数据？数组类型
 
 **每个 Activity 包含了一个 Window 对象，这个对象是由 PhoneWindow 做的实现。而 PhoneWindow 将 DecorView 作为了一个应用窗口的根 View，这个 DecorView 又把屏幕划分为了两个区域：一个是 TitleView，一个是 ContentView，而我们平时在 Xml 文件中写的布局正好是展示在 ContentView 中的。**
+
+
+
+由于Intent有大小限制（通常为1MB左右）
 
 [Activity的四种启动模式应用场景](https://blog.csdn.net/black_bird_cn/article/details/79764794)
 
@@ -48,6 +53,10 @@ WMS 在 addWindow 时，会根据当前 Window 对象的 Token 进行校验
 - 内存泄漏有设么方式检测？用过哪些工具，其中的原理是什么
 
 用ActivityLifecycleCallbacks接口来检测Activity生命周期 ，主要是在Activity的&**onDestroy**方法中，手动调用 GC，然后利用ReferenceQueue+WeakReference，来判断是否有释放不掉的引用，然后结合dump memory的hpof文件, 用[HaHa](https://link.juejin.cn/?target=https%3A%2F%2Fgithub.com%2Fsquare%2Fhaha)分析出泄漏地方
+
+
+
+
 
 [Android性能优化：关于 内存泄露 的知识都在这里了！](https://www.jianshu.com/p/97fb764f2669)
 
@@ -160,7 +169,7 @@ HandlerThread 是一个具有消息循环的Thread，里面用到了Syncronized�
 
 [Android WebView最佳优化（WebView池）](https://blog.csdn.net/u011082160/article/details/118245494)
 
-[android性能优化(三)之Webview优化](https://blog.csdn.net/qingtiantianqing/article/details/100066884)
+[android性能优化(三)之Webview优化](https://zhuanlan.zhihu.com/p/79725603)
 
 [android性能优化(二)之卡顿优化](https://blog.csdn.net/qingtiantianqing/article/details/100066873)
 
@@ -197,6 +206,8 @@ AIDL通过定义服务端暴露的接口，以提供给客户端来调用，AIDL
 **Socket：**
 
 学过计算机网络的对Socket不陌生，所以不需要详细讲述。只需要注意，Android不允许在主线程中请求网络，而且请求网络必须要注意声明相应的permission。然后，在服务器中定义ServerSocket来监听端口，客户端使用Socket来请求端口，连通后就可以进行通信。
+
+[Android 多线程使用及原理（Handler、线程池）](https://blog.csdn.net/qq_51598534/article/details/142143630)
 
 # 多线程开发
 
@@ -315,6 +326,29 @@ Android 8.0 之后Bitmap像素内存放在native堆，到了Android3.0之后，B
 
 - shouldOverrideUrlLoading、onJsPrompt使用有啥区别 
 
+NA端截图如何传递给h5？
+
+- 直接返回Base64数据
+- **临时路径+拦截请求**
+  - 生成临时路径并返回
+    将图片存储到缓存目录，生成一个临时路径（如`customScheme://cache/snapshot.png`），并通过桥接回调将路径传给H5。H5需通过特定请求（如`<img src="customScheme://cache/snapshot.png">`）加载图片。
+  - **NA拦截H5的图片请求**
+    对于第二种方式，NA需通过`WKWebViewConfiguration.setURLSchemeHandler`拦截自定义协议（如`customScheme`）的请求，从缓存目录读取图片数据并返回给H5
+
+**Js代用native方法，它底层的原理？**
+
+JS通过注入的全局对象或协议拦截调用Native，WebKit通过桥接机制实现跨语言通信
+
+**桥接机制**：通过`addJavascriptInterface`将Java对象注入到WebView的JS上下文中。JS可直接调用该对象的方法。
+
+**WebKit/Chromium的实现**
+
+- **进程模型**：
+  - JS运行在**渲染进程**，Java代码运行在**浏览器进程**（主进程）。
+  - IPC通信（如Chromium的Mojo框架）负责跨进程调用。
+- **桥接生成**：
+  - 通过代码绑定（如JNI或自动生成的胶水代码），将Java方法映射为JS可调用的接口。
+
 [最全面总结 Android WebView与 JS 的交互方式](https://www.jianshu.com/p/345f4d8a5cfa)
 
 # APP打包流程
@@ -353,6 +387,7 @@ V2是对整个zip包进行签名，而且在zip包中增加了 一个apk signatu
 - MMAP的原理
 - 为什么Intent不能传递大数据
 - 四大组件底层通信如何实现
+- 为什么Android选择Binder作为应用程序中主要的IPC机制
 
 Binder是基于C/S架构的，简单解释下C/S架构，是指客户端(Client)和服务端(Server)组成的架构，Client端有什么需求，直接发送给Server端去完成，架构清晰明朗，Server端与Client端相对独立，稳定性较好；而共享内存实现方式复杂，没有客户与服务端之别， 需要充分考虑到访问临界资源的并发同步问题，否则可能会出现死锁等问题；从这稳定性角度看，Binder架构优越于共享内存。
 
@@ -408,8 +443,19 @@ bindService:
 # 事件分发
 
 - View、ViewGroup的事件传递机制，如何解决滑动冲突？ 回答如何滑动-冲突最好是举出实际的场景和怎么解决的
+- 触摸事件的传递，View如何消费
 
 1个点击事件发生后，事件先传到`Activity`、再传到`ViewGroup`、最终再传到 `View`
+
+(1) 事件从Activity.dispatchTouchEvent()开始传递，只要没有被停止或拦截，从最上层的View(ViewGroup)开始一直往下(子View)传递。子View可以通过onTouchEvent()对事件进行处理。
+
+(2) 事件由父View(ViewGroup)传递给子View，ViewGroup可以通过onInterceptTouchEvent()对事件做拦截，停止其往下传递。
+
+(3) 如果事件从上往下传递过程中一直没有被停止，且最底层子View没有消费事件，事件会反向往上传递，这时父View(ViewGroup)可以进行消费，如果还是没有被消费的话，最后会到Activity的onTouchEvent()函数。
+
+(4) 如果View没有对ACTION_DOWN进行消费，之后的其他事件不会传递过来。
+
+(5) OnTouchListener优先于onTouchEvent()对事件进行消费。 上面的消费即表示相应函数返回值为true。
 
 整个View的事件转发流程是：
 
@@ -456,7 +502,7 @@ Android事件分发是先传递到ViewGroup，再由ViewGroup传递到View的。
 
 [Android中的dispatchTouchEvent()、onInterceptTouchEvent()和onTouchEvent()](https://blog.csdn.net/xyz_lmn/article/details/12517911)
 
-# WindowMangerSerivce
+# Window
 
 - Activity、View、Window 之间的关系
 
@@ -479,6 +525,17 @@ Activity 是四大组件之一，也是我们的界面载体，可以展示页�
 5 在使用requestWindowFeature来设置样式时，实际上是调用了PhoneWindow的requestFeature方法，会将样式存储在Window的mLocalFeatures变量中，当installDecor时，会应用这些样式。也就是说，当需要通过requestWindowFeature来请求样式时，应该在setContentView方法之前调用，因为setContentView方法的调用会导致DecorView的创建并应用样式，如果在之后调用则会导致不会生效，因为此时DecorView已经创建完成了。
 
 将我们调用 View.post 方法传入的 Runnable 发送到主线程的消息队列，消息是同步类型，也就是放在HandleActionQueue中。Handler 的消息队列循环过程中，在一个消息执行完之后才会取下一个消息。因为这一特性，所以在异步消息没执行完之前，消息队列中的消息是不会执行的。所以调用了 HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们不会被立即执行，等 performTraversals 方法执行完，也就是异步消息结束之后， HandlerActionQueue 的 executeActions 方法，发送到主线程消息队列的消息们才会被执行。ViewRoomImpl 的 performTraversals 方法注释 1 处，开始了 View 绘制流程，依次是测量 performMeasure、布局 performLayout 和绘制 performDraw，这三个方法走完，标志着我们的 UI 已经完成显示了。
+
+**window是何时创建的**
+
+1. **Activity启动与Window创建**
+   当通过`ActivityThread`启动Activity时，首先会调用`performLaunchActivity()`方法创建Activity实例，随后执行其`attach()`方法。在此方法中，通过`new PhoneWindow(this, ...)`显式创建了Window对象。这一步建立了Activity与Window的关联，并为其配置了WindowManager。
+2. **PhoneWindow的初始化**
+   `PhoneWindow`是Window类的唯一实现，负责管理Activity的视图层级。在`attach()`方法中，除了创建PhoneWindow，还会设置WindowManager，通过`setWindowManager()`将Window与系统服务（如WMS）关联。
+3. **DecorView的创建时机**
+   Window的视图根节点`DecorView`并非在创建Window时立即生成，而是在调用`setContentView()`时创建。此方法会触发`installDecor()`，初始化包含标题栏和内容区域的DecorView。这一步骤通常发生在Activity的`onCreate()`阶段。
+4. **ViewRootImpl的绑定**
+   `ViewRootImpl`作为连接Window与View系统的核心，其创建和绑定发生在Activity的`onResume()`阶段。此时，通过`WindowManagerGlobal.addView()`将DecorView添加到Window，并创建对应的ViewRootImpl，从而启动视图的绘制流程。
 
 [简析Window、Activity、DecorView以及ViewRoot之间的错综关系](https://www.jianshu.com/p/8766babc40e0)
 
@@ -523,6 +580,18 @@ Activity 是四大组件之一，也是我们的界面载体，可以展示页�
 - view的创建过程
 
 绘制原理：View 的 requestLayout 和 ViewRootImpl##setView 最终都会调用 ViewRootImpl 的 requestLayout 方法。然后通过 scheduleTraversals 方法提交绘制任务，然后再通过DisplayEventReceiver向底层请求vsync垂直同步信号，当vsync信号来的时候，通过JNI回调回来，再通过Handler往消息队列post一个异步任务，最终是ViewRootImpl去执行绘制任务，最后调用performTraversals方法，完成绘制。
+
+Choreographer：
+
+从ActivityThread.handleResumeActivity开始，`ActivityThread.handleResumeActivity()->WindowManagerImpl.addView()->WindowManagerGlobal.addView()->初始化ViewRootImpl->初始化Choreographer->ViewRootImpl.setView()`
+
+在ViewRootImpl的setView中会调用`requestLayout()->scheduleTraversals()`,然后是建立同步屏障
+
+通过Choreographer线程单例的postCallback()提交一个任务mTraversalRunnable，这个任务是用来做View的三大流程的（measure、layout、draw）
+
+Choreographer.postCallback()内部通过DisplayEventReceiver.nativeScheduleVsync()向系统底层注册VSYNC信号监听，当VSYNC信号来临时，会回调DisplayEventReceiver的dispatchVsync()，最终会通知FrameDisplayEventReceiver.onVsync()方法。
+
+在onVsync()中取出之前传入的任务mTraversalRunnable，执行run方法，开始绘制流程。
 
 绘制流程：
 
@@ -578,16 +647,23 @@ draw()
 **UI原理**
 
 1. Activity的attach 方法里创建PhoneWindow。
-
 2. onCreate方法里的 setContentView 会调用PhoneWindow的setContentView方法，创建DecorView并且把xml布局解析然后添加到DecorView中。
-
 3. 在onResume方法执行后，会创建ViewRootImpl，它是最顶级的View，是DecorView的parent，创建之后会调用setView方法。
-
 4. ViewRootImpl 的 setView方法，会将PhoneWindow添加到WMS中，通过 Session作为媒介。  setView方法里面会调用requestLayout，发起绘制请求。
-
 5. requestLayout 一旦发起，最终会调用 performTraversals 方法，里面将会调用View的三个measure、layout、draw方法，其中View的draw 方法需要一个传一个Canvas参数。
+6. 最后分析了软件绘制的原理，通过relayoutWindow 方法将Surface跟当前Window绑定，通过Surface的lockCanvas方法获取Surface的的Canvas，然后View的绘制就通过这个Canvas，最后通过Surface的unlockCanvasAndPost 方法提交绘制的数据，最终将绘制的数据交给SurfaceFlinger去提交给屏幕显示。
 
-6. 最后分析了软件绘制的原理，通过relayoutWindow 方法将Surface跟当前Window绑定，通过Surface的lockCanvas方法获取Surface的的Canvas，然后View的绘制就通过这个Canvas，最后通过Surface的unlockCanvasAndPost 方法提交绘制的数据，最终将绘制的数据交给SurfaceFlinger去提交给屏幕显示。。
+**View的一次绘制原理**
+
+ViewRootImpl 的 performTraversal() 方法会依次调用 `performMeasure()`、`performLayout()` 和 `performDraw()` 三个方法，这三个方法分别完成 DecorView 的测量、放置和绘制三大流程。
+
+performMeasure() 方法会调用 DecorView 的 measure() 方法，在 measure() 方法中又会调用自己的 onMeasure() 方法。
+
+DecorView 的 onMeasure() 方法会调用父类 FrameLayout 的 onMeasure() 方法，在 FrameLayout 的 onMeasure() 方法中，会调用子元素的 onMeasure() 方法测量子元素的宽高，接着子元素会重复父容器的 measure 过程，如此反复完成整个 View 树的遍历。
+
+而 performLayout() 和 performDraw() 的执行流程与 performMeasure() 是类似的。
+
+measure 过程决定了 View 的宽高，layout 过程决定了 View 的四个顶点的坐标和实际的 View 宽高，draw 过程则决定了 View 的具体绘制操作，只有 draw() 方法完成后 View 的内容才会在屏幕上展示。
 
 [Android View绘制13问13答](https://www.cnblogs.com/punkisnotdead/p/5181821.html)
 
@@ -595,11 +671,14 @@ draw()
 
 [Android图形系统（四）应用篇：自定义View/ViewGroup详解](https://juejin.cn/post/7140332948485570596)
 
+[Android高频面试专题 - 提升篇（二）View绘制流程](https://cloud.tencent.com/developer/article/1601353)
+
 # Recyleview
 
 - 按下列表item的button 同时上下滑动RecyclerView 事件是怎么处理的
 - RecyclerView加载多图速度优化方案
 - RecyclerView的缓存，局部刷新用过么
+- RecyclerView缓存原理，局部刷新原理 
 
 **RecycleView四级缓存**
 
@@ -666,7 +745,30 @@ RecyclerView.ViewHolder viewHolder = mRecyclerView.findViewHolderForAdapterPosit
 
 这种方案用的也很普遍，相信只要细心观察，就会发现类似微博、Facebook、或者一些图片壁纸类的APP，在滑动时未加载的图片是不会立刻加载呈现的，只有当滑动停止后才会加载，这里需要注意一点的是，只加载当前屏幕内的图片。这么一说可能有童鞋就明白了。我们可以通过继承RecyclerView去自定义一个滑动控件，通过继承OnScrollListener后重写其 onScrolled方法 和 onScrollStateChanged 等方法来做相应处理。
 
-[让你彻底长我RecyclerView的缓存机制](http://www.360doc.com/content/19/0712/11/36367108_848240455.shtml)
+**RecycleView优化**
+
+- 布局优化
+
+  - 减少布局嵌套
+  - 使用merge
+  - 如果所有 Item 的高度是固定的，设置 `setHasFixedSize(true)` 可以告诉 RecyclerView 不需要重新计算布局大小，从而提升性能
+
+- 绘制优化
+
+  - **使用 DiffUtil 进行数据更新****使用 DiffUtil 进行数据更新**
+
+- 滑动优化
+
+  - **预加载即将显示的视图**：
+
+- 内存优化
+
+  - **合理的缓存机制**：合理设置 RecyclerViewPool 的大小，控**合理的缓存机制**：合理设置 RecyclerViewPool 的大小，控
+  - **用图片加载库**
+
+  另外：少使用异步任务，局部刷新
+
+[让你彻底长我RecyclerView的缓存机制](https://www.jianshu.com/p/3e9aa4bdaefd)
 
 [阿里3轮面试都问了RecyclerView](https://www.zhihu.com/tardis/zm/art/457038322?source_id=1003)
 
@@ -711,7 +813,16 @@ gradle 构建分为三个阶段初始化阶段
 
 Animation 通过PropertyValuesHolder 来更新对象的目标属性，如果用户没有设定目标属性的Property对象，那么会通过反射的形式调用目标属性的setter方法来更新属性值；否则，通过Property的set方法来设置属性值，这个属性值则通过KeyFrameSet的计算得到，而KeyFrameSet又是通过时间插值器和类型估值器来计算的，在动画执行的过程中不断计算当前时刻目标属性的值，然后 更新属性值来达到动画效果。
 
+1. 视图动画：通过 XML 或代码定义平移（Translate）、旋转（Rotate）、缩放（Scale）、透明度（Alpha）四种变换。
+2. 属性动画：通过反射或 `PropertyValuesHolder` 动态更新对象属性
+3. 帧动画：逐帧播放图片序列。
+
+直播间礼物动画需要兼顾动态化和高性能。例如，我们通过远程配置Lottie JSON文件实现礼物动态更新，结合对象池和异步加载保证流畅性。针对连击场景，优化了动画合并逻辑和渲染性能，使100连击的FPS从20提升至55+。
+
 # AOP
+
+- ASM能hook第三方sdk里面的类么？第三方的jar包呢？
+- Transform原理，Transform中是否能修改sdk中的class文件。
 
 - ASM
 - AspectJ
@@ -721,9 +832,46 @@ Android AOP就是通过预编译方式和运行期动态代理实现程序功能
 - ASM是一个框架/库，它为您提供了一个API来操纵现有的字节码和/或轻松生成新的字节码
 - AspectJ是Java语言之上的一种语言扩展，具有它自己的语法，专门用于扩展具有面向方面编程概念的Java运行时的功能。它包含一个编译器/编织器，它可以在编译时或运行时运行
 
+Transform API拦截到所有输入的class文件和jar包
+
+Transform API 允许开发者创建自定义的 Transform 类，并将其注册到 Android Gradle Plugin 中。每个 Transform 都是一个 Gradle Task，这些 Task 通过 TaskManager 按顺序链接起来形成一个链式结构。第一个 Transform 接收来自 javac 编译的结果，以及已经拉取到的所有依赖库中的类文件。随后，每一个 Transform 可以选择修改这些输入，并将结果传递给下一个 Transform 直至最后一个 Transform 完成处理
+
+# ART
+
+- jvm、dalvik、art介绍下，解决了什么问题？
+
+- **AOT预编译**：安装时将Dex字节码完全编译为本地机器码，消除运行时编译开销，显著提升启动速度和执行效率 。
+
+- **混合编译策略**：Android 7.0引入JIT作为补充，结合AOT与运行时热点代码编译，平衡安装时间和性能 。
+
+- 垃圾回收优化
+
+  ：
+
+  - **并发标记清除（CMS）** ：标记阶段与应用线程并发执行，将GC暂停时间从Dalvik的50ms缩短至3ms 。
+  - **分代回收**：针对不同对象生命周期采用差异策略，减少全堆扫描频率 。
+
+解决的问题
+
+- **性能瓶颈**：彻底解决Dalvik因JIT导致的卡顿问题，使动画、触控响应更流畅 。
+- **存储空间权衡**：AOT编译增加应用安装体积（约10%-20%），但通过压缩和ODEX优化缓解
+
+JVM基于栈结构，Davlivk、art基于寄存器结构
+
+Java运行的是Java字节码,DVM运行的是Dalvik字节码
+
+DVM中的应用每次运行时，字节码都需要通过即时编译器（JIT，just in time）转换为机器码，这会使得应用的运行效率降低。而在ART中，系统在安装应用时会进行一次预编译（AOT，ahead of time）,将字节码预先编译成机器码并存储在本地，这样应用每次运行时就不需要执行编译了，运行效率也大大提升。
+
+ART优点：
+
+1. 应用运行更快，因为 DEX 字节码的翻译在应用安装是就已经完成。
+2. 减少应用的启动时间，因为直接执行的是 native 代码。
+3. 提高设备的续航能力，因为节约了用于一行一行解释字节码所需要的电池。
+4. 支持更低的硬件
+
+[Android内存管理(JVM 、DVM(dalvik) 、ART简介)](https://cloud.tencent.com/developer/article/1702967)
+
 # 存储
-
-
 
 - 第一次从SharedPreference获取值的时候，可能阻塞主线程，造成卡顿／丢帧。
 - **多次commit、apply**
@@ -773,6 +921,13 @@ Parcelable方式的实现原理是将一个完整的对象进行分解，而分�
 3. Parcelable不能使用在要将数据存储在磁盘上的情况，因为Parcelable不能很好的保证数据的持续性在外界有变化的情况下。尽管Serializable效率低点，但此时还是建议使用Serializable 。
 
 Java的序列化机制是通过在运行时判断类的serialVersionUID来验证版本一致性的。在进行反序列化时，JVM会把传来的字节流中的serialVersionUID与本地相应实体（类）的serialVersionUID进行比较，如果相同就认为是一致的，可以进行反序列化，否则就会出现序列化版本不一致的异常。
+
+序列化是跨进程通信的**必要前提**，其核心作用包括：
+
+1. 将对象状态转换为与进程无关的标准化格式，突破内存隔离限制。
+2. 满足Binder等IPC机制对数据格式和传输效率的要求。
+3. 支持网络传输、持久化存储及跨平台兼容性。
+4. 通过深拷贝确保数据独立性与安全性。
 
 # MVVM
 
@@ -847,6 +1002,11 @@ MVVM模式与MVP模式最大的区别在于：ViewModel层不持有View层的引
 2. 电话号码相关权限
 3. 现在需要 APK 签名方案 v2
 
+- **Android 12**：动态主题、隐私仪表盘、前台服务限制。
+- **Android 13**：运行时通知权限、照片选择器、多语言支持。
+- **Android 14**：大屏优化、后台 Activity 限制、隐式广播限制。
+- **Android 15**：应用隔离、存档功能、动态性能增强。
+
 [Android各版本新特性](https://blog.csdn.net/h_bpdwn/article/details/122344248)
 
 # ANR
@@ -857,9 +1017,28 @@ APP发生卡顿，卡顿超过了阈值，就会报ANR
 
 [Android ANR 经验汇总一 —— ANR介绍](https://juejin.cn/post/7054093146631700488)
 
+通过 `ActivityManagerService` 监控主线程消息队列（`MessageQueue`）处理时间。若某个消息（如点击事件）处理超时，触发 ANR。
+
 ANR触发流程，可以比喻为埋炸弹和拆炸弹的过程，
  以启动Service为例，Service的onCreate方法调用之前会使用Handler发送延时10s的消息，Service 的onCreate方法执行完，会把这个延时消息移除掉。
  假如Service的onCreate方法耗时超过10s，延时消息就会被正常处理，也就是触发ANR，会收集cpu、堆栈等信息，弹ANR Dialog。
+
+**ANR原因**
+
+1. 主线程阻塞
+
+   1. 复杂计算（如大文件解析）
+
+   2. 同步网络请求（如 `HttpURLConnection` 未异步）
+
+   3. 低效数据库查询（未使用索引）
+
+2. 死锁竞争
+
+   1. 使用tryLock替代阻塞锁
+   2. 同意获取所顺序
+
+
 
 ## ANR监控
 
@@ -917,9 +1096,20 @@ Traceview - 系统性能分析工具，用于定位应用代码中的耗时操�
 3. 使用定时锁。程序在调用 acquire() 方法加锁时可指定 timeout 参数，该参数指定超过 timeout 秒后会自动释放对 Lock 的锁定，这样就可以解开死锁了。
 4. 死锁检测。死锁检测是一种依靠算法机制来实现的死锁预防机制，它主要是针对那些不可能实现按序加锁，也不能使用定时锁的场景的。
 
+如果对同一个对象多个锁处理：
+
+1. **锁顺序**：全局统一锁的获取顺序
+2. **超时机制**：所有锁操作必须设置超时时间
+3. **锁粒度**：尽量缩小锁的作用范围
+4. **无锁编程**：优先使用 `Atomic` 类或 `ConcurrentHashMap`
+5. **代码审查**：定期检查嵌套锁的使用模式
+6. **压力测试**：使用 JMeter 模拟高并发场景验证死锁防护
+
 [给你一个Demo 你如何快速定位ANR](https://github.com/interviewandroid/AndroidInterView/blob/master/android/anr.md)
 
 [卡顿、ANR、死锁，线上如何监控](https://juejin.cn/post/6973564044351373326#heading-27)
+
+[线上OOM监控](https://zhuanlan.zhihu.com/p/641432592)
 
 # APP卡顿
 
@@ -964,6 +1154,14 @@ systrace
  利用了 Linux 的ftrace调试工具，相当于在系统各个关键位置都添加了一些性能探针，也就是在代码里加了一些性能监控的埋点。Android 在 ftrace 的基础上封装了atrace，并增加了更多特有的探针，例如 Graphics、Activity Manager、Dalvik VM、System Server 等。
 
 卡顿的原因会有很多，比如函数非常耗时、I/O 非常慢、线程间的竞争或者锁等
+
+1. 布局层级过深
+2. 过度绘制
+3. 主线程阻塞
+4. 内存抖动
+5. 列表性能差
+6. 自定义View的onDraw频繁触发
+7. 动画卡顿
 
 # 插件化
 
@@ -1060,13 +1258,15 @@ Native Crash捕获
 
 [Android 平台 Native 代码的崩溃捕获机制及实现](https://mp.weixin.qq.com/s/g-WzYF3wWAljok1XjPoo7w)
 
+[Android 复杂项目崩溃率收敛至0.01%实践](https://juejin.cn/post/7377200392059617295?searchId=202502051546027C5A2478285D4578EA88)
+
 # 启动流程
 
 - Activity启动流程
 - Launcher启动流程
 - 如果进程不存在请求zygote fork出进程。这里使用的不是Binder，是socket。为什么不用bind
 
-[【凯子哥带你学Framework】Activity启动过程全解析](https://blog.csdn.net/zhaokaiqiang1992/article/details/49428287)
+[【凯子哥带你学Framework】Activity启动过程全解析](https://www.cnblogs.com/wytiger/p/5218378.html)
 
 **Launcher启动流程**
 
@@ -1123,8 +1323,6 @@ Binder里有很多线程在跑。fork会把进程里面当前线程复制过去�
 
 
 **参考面试题**
-
-
 
 [android多线程下载解析,详解Android中的多线程断点下载](https://blog.csdn.net/weixin_42109925/article/details/117317119?spm=1001.2101.3001.6661.1&utm_medium=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-117317119-blog-53126087.pc_relevant_multi_platform_whitelistv2&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-2%7Edefault%7ECTRLIST%7Edefault-1-117317119-blog-53126087.pc_relevant_multi_platform_whitelistv2&utm_relevant_index=1)
 
