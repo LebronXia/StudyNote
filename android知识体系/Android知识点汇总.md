@@ -245,6 +245,8 @@ smallWidth
 - 下载一张很大的图，如何保证不 oom？
 - biamap复用
 - Bitmap内存大小，注意事项，如何优化
+- ##### Bitmap对象的理解
+- ##### 对inBitmap的理解。
 
 **内存大小 = （设备屏幕dpi / 资源所在目录dpi）^ 2 × 图片原始宽 × 图片原始高 × 像素大小**
 
@@ -777,8 +779,20 @@ RecyclerView.ViewHolder viewHolder = mRecyclerView.findViewHolderForAdapterPosit
 # Gradle
 
 - Gradle 的工作原理
+
 - Gradle的实现，gradle中task的生命周期。
+
 - gradle生命周期，task，插件
+
+- gradle熟悉么，自动打包知道么？
+
+- 如何加快 Gradle 的编译速度？
+
+- Gradle的Flavor能否配置sourceset？
+
+  
+
+  #### Gradle生命周期
 
 [看完这一系列，彻底搞懂 Gradle](https://juejin.cn/post/6844903870091493384)
 
@@ -1320,7 +1334,13 @@ Binder里有很多线程在跑。fork会把进程里面当前线程复制过去�
 
 [面试题 | 怎么写一个又好又快的日志库？（一](https://juejin.cn/post/7074734658277081102)
 
+# 音视频
 
+
+
+视频直播的流程可以分为如下几步： 采集 —>处理—>编码和封装—>推流到服务器—>服 务器流分发—>播放器流播放
+
+[直播这么火，科普一下面试中常问的音视频基础知识吧！](https://mp.weixin.qq.com/s/VCWiVxTH1BbymcXD0LDuew)
 
 **参考面试题**
 

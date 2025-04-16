@@ -742,6 +742,8 @@ public void onDestroy() {
 5. 内存泄露：注意ImageView的正确引用，生命周期管理
 6. 列表滑动加载的问题：加载错乱用tag、队满任务存在则不添加
 
+[面试官：让你设计一套图片加载框架，你会怎么设计？](https://juejin.cn/post/7120459653682561060)
+
 Android 8.0 之后Bitmap像素内存放在native堆，到了Android3.0之后，Bitmap的内存则已经全部分配在VM堆上，这两种分配方式的区别在于，Native堆的内存不受Dalvik虚拟机的管理，我们想要释放Bitmap的内存，必须手动调用Recycle方法。
 
 [Android图片加载框架最全解析（七），实现带进度的Glide图片加载功能](https://blog.csdn.net/guolin_blog/article/details/78357251)
@@ -772,7 +774,8 @@ Android 8.0 之后Bitmap像素内存放在native堆，到了Android3.0之后，B
 
 - 5.Okhttp连接池和socket复用
 
-  
+
+OkHttp内部的请求流程：使用OkHttp会在请求的时候初始化一个Call的实例，然后执行它的execute()方法或enqueue()方法，内部最后都会执行到getResponseWithInterceptorChain()方法，这个方法里面通过拦截器组成的责任链，依次经过用户自定义普通拦截器、重试拦截器、桥接拦截器、缓存拦截器、连接拦截器和用户自定义网络拦截器以及访问服务器拦截器等拦截处理过程，来获取到一个响应并交给用户。其中，除了OKHttp的内部请求流程这点之外，缓存和连接这两部分内容也是两个很重要的点，掌握了这3点就说明你理解了OkHttp
 
 1）首先，`ConectionPool`中维护了一个双端队列`Deque`，也就是两端都可以进出的队列，用来存储连接。
  2）然后在`ConnectInterceptor`，也就是负责建立连接的拦截器中，首先会找可用连接，也就是从连接池中去获取连接，具体的就是会调用到`ConectionPool`的get方法。也就是遍历了双端队列，如果连接有效，就会调用acquire方法计数并返回这个连接。

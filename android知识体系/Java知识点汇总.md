@@ -44,7 +44,7 @@ Synchronized并不是一开始就是重量级锁，在并发不严重的时候�
 
 ConcurrentHashMap 采用分段锁，内部默认有16个桶，get和put操作，首先将key计算hashcode，然后跟16取余，落到16个桶中的一个，然后每个桶中都加了锁（ReentrantLock），桶中是HashMap结构（数组加链表，链表过长转红黑树）。
 
-
+JAva8抛弃了原有的 Segment 分段锁，而采用了 CAS + synchronized 来保证并发安全性。结构上和 Java8 的 HashMap（数组+链表+红黑树） 基本上一样，不过它要保证线程安全性，所以在源码上确实要复杂一些。1.8 在 1.7 的数据结构上做了大的改动，采用红黑树之后可以保证查询效率（O(logn)），甚至取消了 ReentrantLock 改为了 synchronized，这样可以看出在新版的 JDK 中对 synchronized 优化是很到位的。
 
 **那么ThreadLocal是如何确保只有当前线程可以访问呢**
 
@@ -144,6 +144,14 @@ NullPointerException、OutOfMemoryError） ，系统类加载器。
 ## 垃圾回收机制
 
 
+
+### Minor GC、Major GC、Full GC是什么
+
+1. Minor GC是新生代GC，指的是发生在新生代的垃圾收集动作。由于java对象大都是朝生夕死的，所以Minor GC非常频繁，一般回收速度也比较快。（一般采用复制算法回收垃圾）
+2. Major GC是老年代GC，指的是发生在老年代的GC，通常执行Major GC会连着Minor GC一起执行。Major GC的速度要比Minor GC慢的多。（可采用标记清楚法和标记整理法）
+3. Full GC是清理整个堆空间，包括年轻代和老年代
+
+直接内存是基于物理内存和Java虚拟机内存的中间内存
 
 [JVM那点事-对象的自救计划（对象被设为null会被回收吗？）](https://www.jianshu.com/p/0618241f9f44)
 
