@@ -46,6 +46,8 @@ ConcurrentHashMap 采用分段锁，内部默认有16个桶，get和put操作，
 
 JAva8抛弃了原有的 Segment 分段锁，而采用了 CAS + synchronized 来保证并发安全性。结构上和 Java8 的 HashMap（数组+链表+红黑树） 基本上一样，不过它要保证线程安全性，所以在源码上确实要复杂一些。1.8 在 1.7 的数据结构上做了大的改动，采用红黑树之后可以保证查询效率（O(logn)），甚至取消了 ReentrantLock 改为了 synchronized，这样可以看出在新版的 JDK 中对 synchronized 优化是很到位的。
 
+CAS是无锁并发控制
+
 **那么ThreadLocal是如何确保只有当前线程可以访问呢**
 
 在给ThreadLocal去set值或者get值的时候都会先获取当前线程，然后基于线程去调用getMap(thread),getMap返回的就是线程thread的成员变量threadLocals

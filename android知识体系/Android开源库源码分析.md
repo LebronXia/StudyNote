@@ -1121,19 +1121,29 @@ crash 导致数据丢失。
 其中对于Android系统，增加了文件锁来保证多进程的调用。
 [mmkv 原理解析](https://blog.csdn.net/number_cmd9/article/details/120624516)
 
+
+
+1. 使用 **二进制编码**代替传统的XML。相比 XML 的标签冗余，二进制编码体积更精简
+2. 使用**增量更新**：代替全量更新。每次写入仅追加新数据到文件末尾，旧数据标记为无效，避免全量重写。
+3. 使用**mmap**的技术：代替传统的读IO。内存映射读取文件数据更快，通过FileChannel类。
+
 # KOOM 
 
 `koom-java-leak` 模块用于 **Java Heap** 泄漏监控：它利用 `Copy-on-write` 机制 `fork` 子进程 dump Java Heap，解决了 dump 过程中 app 长时间冻结的问题
 
 **周期性检查**：KOOM会周期性地查询Java堆内存使用情况，并根据设定的阈值来判断是否触发内存快照的dump操作。如果内存占用率超过设定的最大阈值，并且连续几次都超过了这个阈值，系统就会认为发生了内存泄漏，并触发dump操作
 
-**为什么ddump的时候不会造成App卡顿？**
+**为什么dump的时候不会造成App卡顿？**
 
 fork进程采用的是“Copy On Write”技术，只有在进行写入操作时，才会为子进程拷贝分配独立的内存空间，默认情况下，子进程可以和父进程共享同个内存空间，所以，当我们要执行dumpHprofData方法时，可以先fork一个子进程，它拥有父进程的内存副本，然后在子进程中执行dumpHprofData方法，而父进程则可以正常继续运行。
 
 `koom-thread-leak` 模块用于 **Thread** 泄漏监控：它会 `hook 线程的生命周期函数`，周期性的上报泄漏线程信息，其核心流程是从开启monitor的startLoop方法开始，循环检测线程总数与设定的阈值比较。如果超出范围，则认为存在异常并需要上报
 
 koom-native-leak 模块用于 Native Heap 泄漏监控：它利用 Tracing garbage collection 机制分析整个 Native Heap，直接输出泄漏内存信息「大小、分配堆栈等』；极大的降低了业务同学分析、解决内存泄漏的成本。
+
+KOOM为什么相对于LeakCasnary,发生内存泄漏Dump的时候截取的快照小了
+
+KOOM在生成hprof文件时，通过**Native层Hook技术**实时过滤掉分析非必需的数据（如小对象、临时缓存等），仅保留泄漏分析相关的对象引用链和元数据。例如，对重复分配的冗余对象、短生命周期的小对象进行动态剔除，使文件大小压缩至3MB左右
 
 [内存泄露（十）-- KOOM(高性能线上内存监控方案)](https://blog.csdn.net/chuyouyinghe/article/details/141168367?utm_medium=distribute.pc_relevant.none-task-blog-2~default~baidujs_baidulandingword~default-0-141168367-blog-121659149.235^v43^pc_blog_bottom_relevance_base4&spm=1001.2101.3001.4242.1&utm_relevant_index=2)
 

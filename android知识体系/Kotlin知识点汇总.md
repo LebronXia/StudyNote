@@ -158,6 +158,8 @@ class Example {
 
 [委托模式（Delegate）和委托属性（Delegate Properties）](https://www.jianshu.com/p/f54ff17425b2)
 
+[Kotlin学习系列（六）：委托及其原理](https://juejin.cn/post/7016507751094288398)
+
 # 不变：协变和逆变
 
 

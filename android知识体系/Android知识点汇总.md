@@ -248,6 +248,8 @@ smallWidth
 - ##### Bitmap对象的理解
 - ##### 对inBitmap的理解。
 
+
+
 **内存大小 = （设备屏幕dpi / 资源所在目录dpi）^ 2 × 图片原始宽 × 图片原始高 × 像素大小**
 
 图片内存大小以是Bitmap的实际尺寸大小为准，而不是图片显示大小
@@ -264,6 +266,8 @@ ARGB_4444：表示16位位图，每像素占2byte内存（poor quality - Android
 ARGB_8888：表示32位ARGB位图，每像素占4byte内存（Recommended）
 
 利用的就是inBitmap指定将要重复利用的Bitmap对象的内存。同时需要指定inMutable=true表示对象是可变的。如果inPreferredConfig = android.graphics.Bitmap.Config.HARDWARE，inMutable属性永远为false。
+
+降低采样率。BitmapFactory.Options 参数inSampleSize的使用，先把options.inJustDecodeBounds设为true，只是去读取图片的大小，在拿到图片的大小之后和要显示的大小做比较通过calculateInSampleSize()函数计算inSampleSize的具体值，得到值之后。options.inJustDecodeBounds设为false读图片资源。
 
 **下载一张很大的图，如何保证不 oom**
 
@@ -667,6 +671,25 @@ DecorView 的 onMeasure() 方法会调用父类 FrameLayout 的 onMeasure() 方�
 
 measure 过程决定了 View 的宽高，layout 过程决定了 View 的四个顶点的坐标和实际的 View 宽高，draw 过程则决定了 View 的具体绘制操作，只有 draw() 方法完成后 View 的内容才会在屏幕上展示。
 
+**Canvas.save()跟Canvas.restore()的调用时机**
+
+save：用来保存Canvas的状态。save之后，可以调用Canvas的平移、放缩、旋转、错切、裁剪等操作。
+
+restore：用来恢复Canvas之前保存的状态。防止save后对Canvas执行的操作对后续的绘制有影响。
+
+硬件加速：运用了GPU的运算能力来加快渲染的速度
+
+三缓冲机制
+
+传统双缓冲使用两个缓冲区（Front Buffer 和 Back Buffer）。Front Buffer 负责当前帧的显示，Back Buffer 用于绘制下一帧。
+
+**增加第三个缓冲区（Triple Buffer）**：
+
+- 当应用绘制速度慢于屏幕刷新率时，系统保留一个额外的空闲缓冲区。
+- 允许应用在等待VSync期间继续渲染后续帧，避免因等待交换而阻塞。
+
+三缓冲通过引入额外缓冲区，缓解了双缓冲在帧渲染延迟时的卡顿问题，使Android系统在高负载下仍能保持流畅显示。其核心在于**利用空闲缓冲区提前渲染**，结合VSync同步机制，智能调度帧提交时机，是Android图形渲染流水线的关键优化之一
+
 [Android View绘制13问13答](https://www.cnblogs.com/punkisnotdead/p/5181821.html)
 
 [面试官问你：自定义View跟绘制流程懂吗？帮你搞定面试官](https://juejin.cn/post/6844904005945016328)
@@ -736,6 +759,12 @@ RecyclerView.ViewHolder viewHolder = mRecyclerView.findViewHolderForAdapterPosit
                 }
             }
 ```
+
+RecycleView的复用机制
+
+
+
+[RecycleView复用](https://juejin.cn/post/6984974879296585764)
 
 **RecyclerView加载多图速度优化方案**
 
@@ -962,6 +991,7 @@ MVVM模式与MVP模式最大的区别在于：ViewModel层不持有View层的引
 # 混淆
 
 -  android混淆的步骤和原理
+-  安卓的混淆原理是什么？
 
 1. 压缩 ：检测并移除代码中无用的类、字段、方法和属性（Attribute）；
 
@@ -1187,7 +1217,29 @@ systrace
 
 通俗点说就是：ClassLoader加载类的时候是通过遍历dex数组，从dex文件里面去加载一个类，加载成功就返回，加载失败则抛出Class Not Found 异常。
 
+1. so 的加载流程是怎样的，生命周期是怎样的
 
+   这个要从 java 层去看源码分析，是从 ClassLoader 的 PathList 中去找到目标路径加载的，同时 so 是通过 mmap 加载映射到虚拟空间的。生命周期加载库和卸载库时分别调用 JNI_OnLoad 和 JNI_OnUnload() 方法。
+
+# PMS
+
+大体说清一个应用程序安装到手机上时发生了什么
+
+复制APK到/data/app目录下，解压并扫描安装包。
+
+资源管理器解析APK里的资源文件。
+
+解析AndroidManifest文件，并在/data/data/目录下创建对应的应用数据目录。
+
+然后对dex文件进行优化，并保存在dalvik-cache目录下。
+
+将AndroidManifest文件解析出的四大组件信息注册到PackageManagerService中。
+
+安装完成后，发送广播。
+
+# WMS
+
+WMS是如何管理Window的
 
 # 热修复
 
